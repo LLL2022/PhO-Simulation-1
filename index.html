@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Olympiad Simulation Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Physics Olympiad Simulation Lab</h1>
+    <p id="problem-title">Problem: TBD</p>
+  </header>
+
+  <main>
+    <section class="canvas-wrap">
+      <canvas id="simCanvas"></canvas>
+    </section>
+
+    <aside class="controls">
+      <h2>Controls</h2>
+
+      <label>
+        Parameter A
+        <input id="paramA" type="range" min="0" max="10" step="0.1" value="1" />
+      </label>
+      <span id="paramAValue">1.0</span>
+
+      <label>
+        Parameter B
+        <input id="paramB" type="range" min="0" max="10" step="0.1" value="1" />
+      </label>
+      <span id="paramBValue">1.0</span>
+
+      <button id="playPause">Pause</button>
+      <button id="reset">Reset</button>
+
+      <div id="readout"></div>
+    </aside>
+  </main>
+
+  <script src="simulation.js"></script>
+</body>
+</html>
