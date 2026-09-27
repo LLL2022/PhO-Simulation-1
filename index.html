@@ -148,7 +148,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .panel input[type="number"] {
+  .panel input[type="text"] {
     width: 100%;
     padding: 0.45rem 0.6rem;
     border-radius: 6px;
@@ -157,6 +157,10 @@
     color: #e8eaf0;
     font-size: 0.9rem;
     font-family: ui-monospace, monospace;
+    outline: none;
+  }
+  .panel input[type="text"]:focus {
+    border-color: #3b6ea5;
   }
 
   @media (max-width: 900px) {
@@ -216,7 +220,8 @@
     </div>
 
     <label for="nInput">Steps N</label>
-    <input id="nInput" type="number" value="1000" min="1" max="1000000" step="1">
+    <input id="nInput" type="text" inputmode="numeric" autocomplete="off"
+           spellcheck="false" value="1000">
 
     <div class="control-row">
       <button id="runBtnB" class="primary">Run</button>
@@ -630,10 +635,11 @@
   }
 
   /* ---------- Validation ---------- */
-  // Accepts only positive integers ≤ MAX_N. Returns the number, or null.
+  // Field only ever contains digits (filtered on input), so parseN
+  // only needs to check the numeric range.
   function parseN(raw) {
     const s = String(raw).trim();
-    if (!/^[0-9]+$/.test(s)) return null;
+    if (s.length === 0) return null;
     const n = parseInt(s, 10);
     if (!Number.isFinite(n)) return null;
     if (n < 1 || n > MAX_N) return null;
@@ -992,8 +998,26 @@
     updateUI();
   });
 
-  document.getElementById('nInput').addEventListener('input', applyValidation);
-  document.getElementById('nInput').addEventListener('change', applyValidation);
+  /* ---------- Input: digits only ---------- */
+  const nInputEl = document.getElementById('nInput');
+
+  // Strip anything that isn't a digit on every input event
+  // (covers typing, paste, drag-drop, and IME).
+  nInputEl.addEventListener('input', () => {
+    const cleaned = nInputEl.value.replace(/[^0-9]/g, '');
+    if (cleaned !== nInputEl.value) nInputEl.value = cleaned;
+    applyValidation();
+  });
+
+  // Block non-digit keys at the source (allow control/navigation keys).
+  nInputEl.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  nInputEl.addEventListener('change', applyValidation);
 
   function updateUI() {
     const running = !!S.anim;
