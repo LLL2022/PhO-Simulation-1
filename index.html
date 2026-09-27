@@ -17,6 +17,7 @@
 
   body { display: flex; flex-direction: column; overflow: hidden; }
 
+  /* ---------- Header + nav ---------- */
   header {
     border-bottom: 1px solid #2a2f3a;
     flex-shrink: 0;
@@ -46,6 +47,7 @@
     color: #cfe3ff;
   }
 
+  /* ---------- Main layout ---------- */
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -63,6 +65,7 @@
   canvas { display: block; width: 100%; height: 100%; }
   #simCanvasA { cursor: crosshair; }
 
+  /* ---------- Tooltip (Part A) ---------- */
   .tooltip {
     position: absolute;
     pointer-events: none;
@@ -82,6 +85,7 @@
   .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
   .tooltip .hl { color: #ffd166; }
 
+  /* ---------- Shared panel ---------- */
   .panel {
     padding: 1rem 1.15rem 2rem;
     overflow-y: auto;
@@ -121,7 +125,9 @@
     min-height: 1.5em;
   }
   .readout .hl { color: #ffd166; }
+  .readout .err { color: #e88b8b; }
 
+  /* ---------- Part B specific ---------- */
   .dim-row { display: flex; gap: 0.35rem; }
   .dim-btn {
     flex: 1;
@@ -210,7 +216,7 @@
     </div>
 
     <label for="nInput">Steps N</label>
-    <input id="nInput" type="number" value="1000" min="10" max="100000" step="10">
+    <input id="nInput" type="number" value="1000" min="1" max="1000000" step="1">
 
     <div class="control-row">
       <button id="runBtnB" class="primary">Run</button>
@@ -255,6 +261,7 @@
     '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
   ];
 
+  /* Internal physics constants — hidden from the UI on purpose. */
   const PHYS = { v: 4.11, dt: 0.01, T: 10 };
 
   const S = { runs: [], current: null, acc: 0, running: false, hover: null };
@@ -291,10 +298,12 @@
     ];
   }
 
+  /* ---------- Run lifecycle ---------- */
   function newRun() {
     const id = S.runs.length + 1;
     S.current = {
-      id, color: COLORS[(id - 1) % COLORS.length],
+      id,
+      color: COLORS[(id - 1) % COLORS.length],
       t: 0, steps: 0, x: 0, y: 0,
       path: [[0, 0]],
       markers: [{ t: 0, x: 0, y: 0 }],
@@ -334,6 +343,7 @@
     }
   }
 
+  /* ---------- Main loop (real time) ---------- */
   let lastFrame = performance.now();
 
   function loop(now) {
@@ -355,6 +365,7 @@
     requestAnimationFrame(loop);
   }
 
+  /* ---------- Rendering ---------- */
   function render() {
     if (document.getElementById('viewA').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -436,6 +447,7 @@
     ctx.arc(ox, oy, 3, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd166';
     ctx.fill();
+
     ctx.strokeStyle = 'rgba(255,209,102,0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -473,6 +485,7 @@
     return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
   }
 
+  /* ---------- Pointer: pan + hover ---------- */
   let dragging = false;
   let dragStartX = 0, dragStartY = 0;
   let panStartX = 0, panStartY = 0;
@@ -537,6 +550,7 @@
       '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
   }
 
+  /* ---------- Panel wiring ---------- */
   document.getElementById('runBtnA').addEventListener('click', () => {
     if (S.running && S.current) { S.running = false; updateRunButton(); }
     else if (S.current && !S.current.done) { S.running = true; updateRunButton(); }
@@ -593,12 +607,17 @@
   const ctx       = canvas.getContext('2d');
   const readoutEl = document.getElementById('readoutB');
 
+  const MAX_N = 1000000;
+  const MAX_DRAWN_POINTS = 5000;   // decimate path above this length
+  const RATE_C = 2;                // completion time ≈ ln(N) / RATE_C seconds
+
   const S = {
     d: 2,
     N: 1000,
-    anim: null,         // walk currently being animated, or null
-    last: null,         // most recently completed walk (kept on screen)
+    anim: null,          // walk currently being animated
+    last: null,          // most recently completed walk (kept on screen)
     stepAcc: 0,
+    inputValid: true,
   };
 
   function fitCanvas() {
@@ -610,6 +629,42 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  /* ---------- Validation ---------- */
+  // Accepts only positive integers ≤ MAX_N. Returns the number, or null.
+  function parseN(raw) {
+    const s = String(raw).trim();
+    if (!/^[0-9]+$/.test(s)) return null;
+    const n = parseInt(s, 10);
+    if (!Number.isFinite(n)) return null;
+    if (n < 1 || n > MAX_N) return null;
+    return n;
+  }
+
+  function applyValidation() {
+    const raw = document.getElementById('nInput').value;
+    const n = parseN(raw);
+    S.inputValid = (n !== null);
+    if (n !== null) S.N = n;
+
+    const runBtn = document.getElementById('runBtnB');
+    if (!S.anim) runBtn.disabled = !S.inputValid;
+
+    if (!S.inputValid) {
+      readoutEl.innerHTML =
+        '<span class="err">Enter a positive integer up to ' +
+        MAX_N.toLocaleString() + '.</span>';
+    } else if (!S.anim) {
+      if (S.last) {
+        readoutEl.innerHTML =
+          'Last run: d=' + S.last.d + ', N=' + S.last.N +
+          ', returns=<span class="hl">' + S.last.returns + '</span>';
+      } else {
+        readoutEl.textContent = 'Ready.';
+      }
+    }
+  }
+
+  /* ---------- Walk physics ---------- */
   function randomUnitVector(d) {
     const k = Math.floor(Math.random() * 2 * d);
     const axis = Math.floor(k / 2);
@@ -644,6 +699,30 @@
     if (w.stepIdx >= w.N) w.done = true;
   }
 
+  /* ---------- Path drawing with decimation ---------- */
+  // Draws walk.path with at most ~MAX_DRAWN_POINTS line segments.
+  function tracePath(walk, toScreen) {
+    const path = walk.path;
+    const L = path.length;
+    const stride = Math.max(1, Math.floor(L / MAX_DRAWN_POINTS));
+
+    const [x0, y0] = toScreen(path[0]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+
+    for (let i = stride; i < L; i += stride) {
+      const [sx, sy] = toScreen(path[i]);
+      ctx.lineTo(sx, sy);
+    }
+
+    // Always include the true final point.
+    if ((L - 1) % stride !== 0) {
+      const [sx, sy] = toScreen(path[L - 1]);
+      ctx.lineTo(sx, sy);
+    }
+  }
+
+  /* ---------- Rendering ---------- */
   function render() {
     if (document.getElementById('viewB').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -695,10 +774,16 @@
     ctx.fillText('0', padL - 6, cy0 + 4);
     ctx.fillText('-' + maxAbs.toFixed(0), padL - 6, padT + plotH + 4);
 
+    // 1D path is a timeline, not spatial; decimate by index for speed.
+    const L = walk.path.length;
+    const stride = Math.max(1, Math.floor(L / MAX_DRAWN_POINTS));
     ctx.beginPath();
     ctx.moveTo(mapX(0), mapY(walk.path[0][0]));
-    for (let i = 1; i < walk.path.length; i++) {
+    for (let i = stride; i < L; i += stride) {
       ctx.lineTo(mapX(i), mapY(walk.path[i][0]));
+    }
+    if ((L - 1) % stride !== 0) {
+      ctx.lineTo(mapX(L - 1), mapY(walk.path[L - 1][0]));
     }
     ctx.strokeStyle = '#6ea8fe';
     ctx.lineWidth = 1.2;
@@ -731,6 +816,7 @@
     maxR *= 1.1;
 
     const scale = Math.min(w, h) / (2 * maxR);
+    const toScreen = (p) => [cx + p[0] * scale, cy - p[1] * scale];
     const w2s = (x, y) => [cx + x * scale, cy - y * scale];
 
     const spacing = niceGridSpacing(maxR);
@@ -746,13 +832,7 @@
     }
     ctx.stroke();
 
-    ctx.beginPath();
-    const [sx0, sy0] = w2s(walk.path[0][0], walk.path[0][1]);
-    ctx.moveTo(sx0, sy0);
-    for (let i = 1; i < walk.path.length; i++) {
-      const [sx, sy] = w2s(walk.path[i][0], walk.path[i][1]);
-      ctx.lineTo(sx, sy);
-    }
+    tracePath(walk, toScreen);
     ctx.strokeStyle = 'rgba(110,168,254,0.85)';
     ctx.lineWidth = 1.2;
     ctx.lineJoin = 'round';
@@ -794,10 +874,11 @@
     maxIso *= 1.1;
 
     const scale = Math.min(w, h) / (2 * maxIso);
-    const w2s = (p) => {
+    const toScreen = (p) => {
       const [ix, iy] = proj(p);
       return [cx + ix * scale, cy - iy * scale];
     };
+    const w2s = toScreen;
 
     const axisLen = maxIso * 0.55;
     const drawAxis = (vec, color) => {
@@ -813,13 +894,7 @@
     drawAxis([0, 1, 0], 'rgba(120,255,120,0.35)');
     drawAxis([0, 0, 1], 'rgba(120,120,255,0.35)');
 
-    ctx.beginPath();
-    const [sx0, sy0] = w2s(walk.path[0]);
-    ctx.moveTo(sx0, sy0);
-    for (let i = 1; i < walk.path.length; i++) {
-      const [sx, sy] = w2s(walk.path[i]);
-      ctx.lineTo(sx, sy);
-    }
+    tracePath(walk, toScreen);
     ctx.strokeStyle = 'rgba(110,168,254,0.85)';
     ctx.lineWidth = 1.2;
     ctx.lineJoin = 'round';
@@ -855,7 +930,7 @@
     ctx.fillText('returns: ' + walk.returns, 14, 58);
   }
 
-  /* ---------- Loop: always animate ---------- */
+  /* ---------- Loop: rate ≈ C · N / ln(N) → near-constant completion time ---------- */
   let lastFrameTime = performance.now();
 
   function loop(now) {
@@ -863,12 +938,12 @@
     lastFrameTime = now;
 
     if (!document.getElementById('viewB').hidden && S.anim && !S.anim.done) {
-      // Rate scales with sqrt(N): completion time scales with sqrt(N).
-      const rate = 8 * Math.sqrt(S.anim.N);
+      // Completion time ≈ ln(N) / RATE_C seconds.
+      const rate = RATE_C * S.anim.N / Math.max(2, Math.log(S.anim.N));
       S.stepAcc += dt * rate;
 
       let guard = 0;
-      while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 50000) {
+      while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 200000) {
         advanceWalk(S.anim);
         S.stepAcc -= 1;
       }
@@ -900,9 +975,10 @@
   });
 
   document.getElementById('runBtnB').addEventListener('click', () => {
-    if (S.anim) return;   // already running
-    const N = parseInt(document.getElementById('nInput').value, 10);
-    if (!N || N < 1) return;
+    if (S.anim) return;
+    if (!S.inputValid) return;
+    const N = parseN(document.getElementById('nInput').value);
+    if (N === null) { applyValidation(); return; }
 
     S.anim = createWalk(S.d, N);
     S.stepAcc = 0;
@@ -916,16 +992,21 @@
     updateUI();
   });
 
-  document.getElementById('nInput').addEventListener('change', updateUI);
+  document.getElementById('nInput').addEventListener('input', applyValidation);
+  document.getElementById('nInput').addEventListener('change', applyValidation);
 
   function updateUI() {
     const running = !!S.anim;
-    document.getElementById('runBtnB').disabled = running;
+    document.getElementById('runBtnB').disabled = running || !S.inputValid;
     document.getElementById('clearBtnB').disabled = running;
     document.querySelectorAll('#panelB .dim-btn').forEach(b => b.disabled = running);
 
     if (running) {
       updateReadoutRunning(S.anim);
+    } else if (!S.inputValid) {
+      readoutEl.innerHTML =
+        '<span class="err">Enter a positive integer up to ' +
+        MAX_N.toLocaleString() + '.</span>';
     } else if (S.last) {
       readoutEl.innerHTML =
         'Last run: d=' + S.last.d + ', N=' + S.last.N +
@@ -944,6 +1025,7 @@
 
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
+  applyValidation();
   updateUI();
   requestAnimationFrame(loop);
 })();
