@@ -84,16 +84,6 @@
     flex-direction: column;
   }
 
-  .panel label {
-    display: block;
-    font-size: 0.72rem;
-    color: #8b93a1;
-    margin: 0.9rem 0 0.3rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .panel input[type="range"] { width: 100%; }
-
   .panel button {
     padding: 0.5rem 0.9rem;
     border-radius: 6px;
@@ -116,44 +106,13 @@
   .control-row button { flex: 1; }
 
   .readout {
-    margin-top: 0.9rem;
+    margin-top: 1rem;
     font-family: ui-monospace, monospace;
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     color: #9aa4b2;
-    line-height: 1.7;
+    line-height: 1.8;
   }
   .readout .hl { color: #ffd166; }
-
-  .panel hr {
-    border: none;
-    border-top: 1px solid #2a2f3a;
-    margin: 1rem 0;
-  }
-
-  table.results {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 0.4rem;
-    font-size: 0.76rem;
-    font-family: ui-monospace, monospace;
-  }
-  table.results th, table.results td {
-    padding: 0.28rem 0.35rem;
-    border-bottom: 1px solid #232833;
-    text-align: right;
-  }
-  table.results th { color: #6ea8fe; font-weight: 500; }
-  table.results th:first-child, table.results td:first-child { text-align: left; }
-
-  .panel details { margin-top: 0.6rem; }
-  .panel summary {
-    cursor: pointer;
-    font-size: 0.78rem;
-    color: #8b93a1;
-    user-select: none;
-    padding: 0.3rem 0;
-  }
-  .panel summary:hover { color: #c8cfda; }
 
   .hint {
     font-size: 0.76rem;
@@ -174,7 +133,7 @@
 
 <header>
   <h1>Part A · 2D Random Walk</h1>
-  <span class="sub">v = 1, dt = 0.1 s, T = 10 s · hover the dots to read (x, y, t)</span>
+  <span class="sub">hover a marker to read its (x, y, t)</span>
 </header>
 
 <main>
@@ -189,51 +148,42 @@
       <button id="clearBtn">Clear All</button>
     </div>
 
-    <label>Animation speed</label>
-    <input id="speedIn" type="range" min="1" max="20" step="1" value="6">
-
     <div class="readout">
-      Runs completed: <span class="hl" id="runCount">0</span> / 10<br>
+      Runs completed: <span class="hl" id="runCount">0</span><br>
       <span id="liveText">Click "New Run" to begin.</span>
     </div>
 
-    <hr>
-
-    <details open>
-      <summary>Recorded data — (x, y) at every second</summary>
-      <div id="dataTable"></div>
-    </details>
-
-    <p class="hint">Each new run keeps its trajectory on the canvas. Read the per-second markers, or hover them for exact values.</p>
+    <p class="hint">Record each run's (x, y) at the times you need in your lab notebook. The trajectory is drawn live; markers appear at every integer second.</p>
   </aside>
 </main>
 
 <script>
 /* =====================================================
-   Part A · 2D Random Walk  ·  single particle · 10 runs
+   Part A · 2D Random Walk  ·  single particle
+   Internal constants are hidden from the UI on purpose.
    ===================================================== */
 
 const canvas  = document.getElementById('simCanvas');
 const ctx     = canvas.getContext('2d');
 const tooltip = document.getElementById('tooltip');
-const panelEl = document.querySelector('.panel');
 
 const COLORS = [
   '#6ea8fe', '#8bc9a0', '#ffd166', '#e88b8b', '#c8a2ff',
   '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
 ];
 
-const S = {
-  v: 1,          // speed (units / s)
-  dt: 0.1,       // timestep (s)
-  T: 10,         // total time per run (s)
-  speed: 6,      // animation speed multiplier
+/* ---- internal physics constants (not shown to the student) ---- */
+const PHYS = {
+  v: 1,        // step length per unit time is v·dt
+  dt: 0.01,    // s
+  T: 10,       // s total per run
+};
 
+const S = {
   runs: [],
   current: null,
   acc: 0,
   running: false,
-
   hover: null,
 };
 
@@ -254,7 +204,8 @@ function updateView() {
   const h = canvas.clientHeight;
   view.cx = w / 2;
   view.cy = h / 2;
-  view.scale = Math.min(w, h) / 8;   // roughly ±4 units visible
+  // Fixed visible window — students infer scale from hover values.
+  view.scale = Math.min(w, h) / 8;
 }
 
 function w2s(x, y) {
@@ -279,7 +230,6 @@ function newRun() {
   S.running = true;
   updateLiveReadout();
   updateRunButton();
-  refreshDataTable();
 }
 
 function stepOnce() {
@@ -288,31 +238,30 @@ function stepOnce() {
 
   c.steps += 1;
   const th = Math.random() * Math.PI * 2;
-  c.x += S.v * S.dt * Math.cos(th);
-  c.y += S.v * S.dt * Math.sin(th);
+  c.x += PHYS.v * PHYS.dt * Math.cos(th);
+  c.y += PHYS.v * PHYS.dt * Math.sin(th);
   c.path.push([c.x, c.y]);
 
-  const tNow = c.steps * S.dt;
+  const tNow = c.steps * PHYS.dt;
   c.t = tNow;
 
   const nextSec = c.markers.length;
-  if (nextSec <= S.T && tNow + 1e-9 >= nextSec) {
+  if (nextSec <= PHYS.T && tNow + 1e-9 >= nextSec) {
     c.markers.push({ t: nextSec, x: c.x, y: c.y });
   }
 
-  if (tNow + 1e-9 >= S.T) {
-    c.t = S.T;
+  if (tNow + 1e-9 >= PHYS.T) {
+    c.t = PHYS.T;
     c.done = true;
     S.runs.push(c);
     S.current = null;
     S.running = false;
     updateRunButton();
     updateLiveReadout();
-    refreshDataTable();
   }
 }
 
-/* ---------- Main loop ---------- */
+/* ---------- Main loop (real time) ---------- */
 let lastFrame = performance.now();
 
 function loop(now) {
@@ -320,14 +269,14 @@ function loop(now) {
   lastFrame = now;
 
   if (S.running && S.current) {
-    S.acc += dtReal * S.speed;
+    S.acc += dtReal;                       // real time in seconds
     let guard = 0;
-    while (S.acc >= S.dt && S.current && guard++ < 5000) {
+    while (S.acc >= PHYS.dt && S.current && guard++ < 20000) {
       stepOnce();
-      S.acc -= S.dt;
+      S.acc -= PHYS.dt;
     }
     const tEl = document.getElementById('tNow');
-    if (tEl && S.current) tEl.textContent = S.current.t.toFixed(1);
+    if (tEl && S.current) tEl.textContent = S.current.t.toFixed(2);
   }
 
   render();
@@ -343,7 +292,6 @@ function render() {
   ctx.clearRect(0, 0, w, h);
 
   drawGrid();
-  drawRmsCircle();
   drawAllRuns();
   drawOrigin();
   drawHoverRing();
@@ -372,24 +320,6 @@ function drawGrid() {
     ctx.lineTo(w, sy);
   }
   ctx.stroke();
-}
-
-function drawRmsCircle() {
-  const rms = Math.sqrt(S.v * S.v * S.dt * S.T);
-  const R = rms * view.scale;
-
-  ctx.beginPath();
-  ctx.arc(view.cx, view.cy, R, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(110,168,254,0.22)';
-  ctx.setLineDash([6, 6]);
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.fillStyle = 'rgba(110,168,254,0.55)';
-  ctx.font = '11px ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('\u221A\u27E8r\u00B2\u27E9 at T = ' + S.T + ' s', view.cx + R + 8, view.cy + 4);
 }
 
 function drawAllRuns() {
@@ -465,11 +395,10 @@ function drawOverlay() {
   ctx.font = '12px ui-monospace, monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(200,207,218,0.75)';
-  ctx.fillText('v = ' + S.v + '   dt = ' + S.dt + ' s   T = ' + S.T + ' s', 14, 22);
-  ctx.fillText('Runs completed: ' + S.runs.length + ' / 10', 14, 40);
+  ctx.fillText('Runs completed: ' + S.runs.length, 14, 22);
   if (S.current) {
     ctx.fillStyle = 'rgba(255,209,102,0.9)';
-    ctx.fillText('Current run ' + S.current.id + '   t = ' + S.current.t.toFixed(1) + ' s', 14, 58);
+    ctx.fillText('t = ' + S.current.t.toFixed(2) + ' s', 14, 42);
   }
 }
 
@@ -555,11 +484,6 @@ function bindPanel() {
     tooltip.style.display = 'none';
     updateRunButton();
     updateLiveReadout();
-    refreshDataTable();
-  });
-
-  document.getElementById('speedIn').addEventListener('input', (e) => {
-    S.speed = parseFloat(e.target.value);
   });
 }
 
@@ -580,48 +504,12 @@ function updateLiveReadout() {
 
   if (S.current) {
     live.innerHTML = 'Current run ' + S.current.id +
-      ': t = <span class="hl" id="tNow">' + S.current.t.toFixed(1) + '</span> s';
+      ': t = <span class="hl" id="tNow">' + S.current.t.toFixed(2) + '</span> s';
   } else if (S.runs.length === 0) {
     live.textContent = 'Click "New Run" to begin.';
-  } else if (S.runs.length >= 10) {
-    live.textContent = 'All 10 runs complete.';
   } else {
     live.textContent = 'Latest: run #' + S.runs.length + ' complete.';
   }
-}
-
-function refreshDataTable() {
-  const box = document.getElementById('dataTable');
-  if (!box) return;
-
-  if (S.runs.length === 0 && !S.current) {
-    box.innerHTML =
-      '<p style="font-size:.78rem;color:#6b7280;margin:.4rem 0;">No runs recorded yet.</p>';
-    return;
-  }
-
-  const all = [...S.runs];
-  if (S.current) all.push(S.current);
-
-  let html = '';
-  for (const run of all) {
-    const status = run.done ? '' : ' \u00B7 in progress';
-    html +=
-      '<details style="margin-top:.4rem;">' +
-        '<summary style="color:' + run.color + ';font-family:ui-monospace,monospace;font-size:.78rem;">' +
-          'Run ' + run.id + status +
-        '</summary>' +
-        '<table class="results">' +
-          '<tr><th>t (s)</th><th>x</th><th>y</th></tr>' +
-          run.markers.map(m =>
-            '<tr><td>' + m.t + '</td>' +
-            '<td>' + m.x.toFixed(4) + '</td>' +
-            '<td>' + m.y.toFixed(4) + '</td></tr>'
-          ).join('') +
-        '</table>' +
-      '</details>';
-  }
-  box.innerHTML = html;
 }
 
 /* =====================================================
@@ -632,7 +520,6 @@ window.addEventListener('resize', fitCanvas);
 fitCanvas();
 bindPanel();
 updateLiveReadout();
-refreshDataTable();
 requestAnimationFrame(loop);
 </script>
 </body>
