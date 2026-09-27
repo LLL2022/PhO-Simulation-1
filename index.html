@@ -152,8 +152,6 @@
       Runs completed: <span class="hl" id="runCount">0</span><br>
       <span id="liveText">Click "New Run" to begin.</span>
     </div>
-
-    <p class="hint">Record each run's (x, y) at the times you need in your lab notebook. The trajectory is drawn live; markers appear at every integer second.</p>
   </aside>
 </main>
 
@@ -174,7 +172,7 @@ const COLORS = [
 
 /* ---- internal physics constants (not shown to the student) ---- */
 const PHYS = {
-  v: 1,        // step length per unit time is v·dt
+  v: 4.11,        // step length per unit time is v·dt
   dt: 0.01,    // s
   T: 10,       // s total per run
 };
