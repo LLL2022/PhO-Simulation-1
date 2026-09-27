@@ -1,44 +1,639 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Physics Olympiad Simulation Lab</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Part A · 2D Random Walk</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f1117;
+    color: #e8eaf0;
+  }
+
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ---------- Header ---------- */
+  header {
+    border-bottom: 1px solid #2a2f3a;
+    flex-shrink: 0;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  h1 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  header .sub {
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    color: #8b93a1;
+  }
+
+  /* ---------- Main ---------- */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    background: #0b0d12;
+    border-right: 1px solid #2a2f3a;
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+
+  /* ---------- Tooltip ---------- */
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(15, 17, 23, 0.96);
+    border: 1px solid #3b6ea5;
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    color: #e8eaf0;
+    line-height: 1.5;
+    display: none;
+    z-index: 10;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
+  .tooltip .hl { color: #ffd166; }
+
+  /* ---------- Panel ---------- */
+  .panel {
+    padding: 1rem 1.15rem 2rem;
+    overflow-y: auto;
+    background: #151922;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel label {
+    display: block;
+    font-size: 0.72rem;
+    color: #8b93a1;
+    margin: 0.9rem 0 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .panel input[type="range"] { width: 100%; }
+
+  .panel button {
+    padding: 0.5rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #3b4252;
+    background: #1f2530;
+    color: #c8cfda;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+  .panel button:hover { background: #2a3140; }
+  .panel button.primary {
+    background: #1f3a5f;
+    border-color: #3b6ea5;
+    color: #cfe3ff;
+  }
+  .panel button.primary:hover { background: #264a78; }
+
+  .control-row { display: flex; gap: 0.5rem; margin-top: 0.3rem; }
+  .control-row button { flex: 1; }
+
+  .readout {
+    margin-top: 0.9rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.82rem;
+    color: #9aa4b2;
+    line-height: 1.7;
+  }
+  .readout .hl { color: #ffd166; }
+
+  .panel hr {
+    border: none;
+    border-top: 1px solid #2a2f3a;
+    margin: 1rem 0;
+  }
+
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.4rem;
+    font-size: 0.76rem;
+    font-family: ui-monospace, monospace;
+  }
+  table.results th, table.results td {
+    padding: 0.28rem 0.35rem;
+    border-bottom: 1px solid #232833;
+    text-align: right;
+  }
+  table.results th { color: #6ea8fe; font-weight: 500; }
+  table.results th:first-child, table.results td:first-child { text-align: left; }
+
+  .panel details { margin-top: 0.6rem; }
+  .panel summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: #8b93a1;
+    user-select: none;
+    padding: 0.3rem 0;
+  }
+  .panel summary:hover { color: #c8cfda; }
+
+  .hint {
+    font-size: 0.76rem;
+    color: #6b7280;
+    font-style: italic;
+    margin-top: auto;
+    padding-top: 1rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
+    .canvas-wrap { border-right: none; border-bottom: 1px solid #2a2f3a; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Physics Olympiad Simulation Lab</h1>
-    <p id="problem-title">Problem: TBD</p>
-  </header>
 
-  <main>
-    <section class="canvas-wrap">
-      <canvas id="simCanvas"></canvas>
-    </section>
+<header>
+  <h1>Part A · 2D Random Walk</h1>
+  <span class="sub">v = 1, dt = 0.1 s, T = 10 s · hover the dots to read (x, y, t)</span>
+</header>
 
-    <aside class="controls">
-      <h2>Controls</h2>
+<main>
+  <section class="canvas-wrap">
+    <canvas id="simCanvas"></canvas>
+    <div id="tooltip" class="tooltip"></div>
+  </section>
 
-      <label>
-        Parameter A
-        <input id="paramA" type="range" min="0" max="10" step="0.1" value="1" />
-      </label>
-      <span id="paramAValue">1.0</span>
+  <aside class="panel">
+    <div class="control-row">
+      <button id="runBtn" class="primary">New Run</button>
+      <button id="clearBtn">Clear All</button>
+    </div>
 
-      <label>
-        Parameter B
-        <input id="paramB" type="range" min="0" max="10" step="0.1" value="1" />
-      </label>
-      <span id="paramBValue">1.0</span>
+    <label>Animation speed</label>
+    <input id="speedIn" type="range" min="1" max="20" step="1" value="6">
 
-      <button id="playPause">Pause</button>
-      <button id="reset">Reset</button>
+    <div class="readout">
+      Runs completed: <span class="hl" id="runCount">0</span> / 10<br>
+      <span id="liveText">Click "New Run" to begin.</span>
+    </div>
 
-      <div id="readout"></div>
-    </aside>
-  </main>
+    <hr>
 
-  <script src="simulation.js"></script>
+    <details open>
+      <summary>Recorded data — (x, y) at every second</summary>
+      <div id="dataTable"></div>
+    </details>
+
+    <p class="hint">Each new run keeps its trajectory on the canvas. Read the per-second markers, or hover them for exact values.</p>
+  </aside>
+</main>
+
+<script>
+/* =====================================================
+   Part A · 2D Random Walk  ·  single particle · 10 runs
+   ===================================================== */
+
+const canvas  = document.getElementById('simCanvas');
+const ctx     = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+const panelEl = document.querySelector('.panel');
+
+const COLORS = [
+  '#6ea8fe', '#8bc9a0', '#ffd166', '#e88b8b', '#c8a2ff',
+  '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
+];
+
+const S = {
+  v: 1,          // speed (units / s)
+  dt: 0.1,       // timestep (s)
+  T: 10,         // total time per run (s)
+  speed: 6,      // animation speed multiplier
+
+  runs: [],
+  current: null,
+  acc: 0,
+  running: false,
+
+  hover: null,
+};
+
+/* ---------- View transform ---------- */
+const view = { cx: 0, cy: 0, scale: 50 };
+
+function fitCanvas() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.max(1, Math.round(r.width  * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  updateView();
+}
+
+function updateView() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  view.cx = w / 2;
+  view.cy = h / 2;
+  view.scale = Math.min(w, h) / 8;   // roughly ±4 units visible
+}
+
+function w2s(x, y) {
+  return [view.cx + x * view.scale, view.cy - y * view.scale];
+}
+
+/* ---------- Run lifecycle ---------- */
+function newRun() {
+  const id = S.runs.length + 1;
+  S.current = {
+    id,
+    color: COLORS[(id - 1) % COLORS.length],
+    t: 0,
+    steps: 0,
+    x: 0,
+    y: 0,
+    path: [[0, 0]],
+    markers: [{ t: 0, x: 0, y: 0 }],
+    done: false,
+  };
+  S.acc = 0;
+  S.running = true;
+  updateLiveReadout();
+  updateRunButton();
+  refreshDataTable();
+}
+
+function stepOnce() {
+  const c = S.current;
+  if (!c) return;
+
+  c.steps += 1;
+  const th = Math.random() * Math.PI * 2;
+  c.x += S.v * S.dt * Math.cos(th);
+  c.y += S.v * S.dt * Math.sin(th);
+  c.path.push([c.x, c.y]);
+
+  const tNow = c.steps * S.dt;
+  c.t = tNow;
+
+  const nextSec = c.markers.length;
+  if (nextSec <= S.T && tNow + 1e-9 >= nextSec) {
+    c.markers.push({ t: nextSec, x: c.x, y: c.y });
+  }
+
+  if (tNow + 1e-9 >= S.T) {
+    c.t = S.T;
+    c.done = true;
+    S.runs.push(c);
+    S.current = null;
+    S.running = false;
+    updateRunButton();
+    updateLiveReadout();
+    refreshDataTable();
+  }
+}
+
+/* ---------- Main loop ---------- */
+let lastFrame = performance.now();
+
+function loop(now) {
+  const dtReal = Math.min((now - lastFrame) / 1000, 0.05);
+  lastFrame = now;
+
+  if (S.running && S.current) {
+    S.acc += dtReal * S.speed;
+    let guard = 0;
+    while (S.acc >= S.dt && S.current && guard++ < 5000) {
+      stepOnce();
+      S.acc -= S.dt;
+    }
+    const tEl = document.getElementById('tNow');
+    if (tEl && S.current) tEl.textContent = S.current.t.toFixed(1);
+  }
+
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* =====================================================
+   Rendering
+   ===================================================== */
+function render() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+
+  drawGrid();
+  drawRmsCircle();
+  drawAllRuns();
+  drawOrigin();
+  drawHoverRing();
+  drawOverlay();
+}
+
+function drawGrid() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const step = 0.5;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  const xHalf = Math.ceil((w / 2) / view.scale / step) * step;
+  for (let x = -xHalf; x <= xHalf + 1e-9; x += step) {
+    const [sx] = w2s(x, 0);
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, h);
+  }
+  const yHalf = Math.ceil((h / 2) / view.scale / step) * step;
+  for (let y = -yHalf; y <= yHalf + 1e-9; y += step) {
+    const [, sy] = w2s(0, y);
+    ctx.moveTo(0, sy);
+    ctx.lineTo(w, sy);
+  }
+  ctx.stroke();
+}
+
+function drawRmsCircle() {
+  const rms = Math.sqrt(S.v * S.v * S.dt * S.T);
+  const R = rms * view.scale;
+
+  ctx.beginPath();
+  ctx.arc(view.cx, view.cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(110,168,254,0.22)';
+  ctx.setLineDash([6, 6]);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = 'rgba(110,168,254,0.55)';
+  ctx.font = '11px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('\u221A\u27E8r\u00B2\u27E9 at T = ' + S.T + ' s', view.cx + R + 8, view.cy + 4);
+}
+
+function drawAllRuns() {
+  for (let i = 0; i < S.runs.length - 1; i++) {
+    drawRunPath(S.runs[i], 0.18);
+  }
+  if (S.runs.length > 0) {
+    const last = S.runs[S.runs.length - 1];
+    drawRunPath(last, 0.55);
+    drawRunMarkers(last, 3.5);
+  }
+  if (S.current) {
+    drawRunPath(S.current, 1.0);
+    drawRunMarkers(S.current, 4.5);
+  }
+}
+
+function drawRunPath(run, alpha) {
+  if (run.path.length < 2) return;
+  ctx.beginPath();
+  const [sx0, sy0] = w2s(run.path[0][0], run.path[0][1]);
+  ctx.moveTo(sx0, sy0);
+  for (let i = 1; i < run.path.length; i++) {
+    const [sx, sy] = w2s(run.path[i][0], run.path[i][1]);
+    ctx.lineTo(sx, sy);
+  }
+  ctx.strokeStyle = hexWithAlpha(run.color, alpha);
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+function drawRunMarkers(run, r) {
+  for (const m of run.markers) {
+    const [sx, sy] = w2s(m.x, m.y);
+    ctx.beginPath();
+    ctx.arc(sx, sy, m.t === 0 ? r + 1.5 : r, 0, Math.PI * 2);
+    ctx.fillStyle = m.t === 0 ? '#ffd166' : run.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function drawOrigin() {
+  ctx.beginPath();
+  ctx.arc(view.cx, view.cy, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffd166';
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,209,102,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(view.cx - 8, view.cy);
+  ctx.lineTo(view.cx + 8, view.cy);
+  ctx.moveTo(view.cx, view.cy - 8);
+  ctx.lineTo(view.cx, view.cy + 8);
+  ctx.stroke();
+}
+
+function drawHoverRing() {
+  if (!S.hover) return;
+  const [sx, sy] = w2s(S.hover.x, S.hover.y);
+  ctx.beginPath();
+  ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function drawOverlay() {
+  ctx.font = '12px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(200,207,218,0.75)';
+  ctx.fillText('v = ' + S.v + '   dt = ' + S.dt + ' s   T = ' + S.T + ' s', 14, 22);
+  ctx.fillText('Runs completed: ' + S.runs.length + ' / 10', 14, 40);
+  if (S.current) {
+    ctx.fillStyle = 'rgba(255,209,102,0.9)';
+    ctx.fillText('Current run ' + S.current.id + '   t = ' + S.current.t.toFixed(1) + ' s', 14, 58);
+  }
+}
+
+function hexWithAlpha(hex, alpha) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+/* =====================================================
+   Hover / tooltip
+   ===================================================== */
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const hoverable = [];
+  if (S.current) hoverable.push(S.current);
+  if (S.runs.length > 0) hoverable.push(S.runs[S.runs.length - 1]);
+
+  let best = null;
+  let bestDist = 16;
+
+  for (const run of hoverable) {
+    for (const m of run.markers) {
+      const [sx, sy] = w2s(m.x, m.y);
+      const d = Math.hypot(sx - mx, sy - my);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { ...m, runId: run.id, sx, sy };
+      }
+    }
+  }
+
+  S.hover = best;
+  updateTooltip();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  S.hover = null;
+  updateTooltip();
+});
+
+function updateTooltip() {
+  if (!S.hover) {
+    tooltip.style.display = 'none';
+    return;
+  }
+  tooltip.style.display = 'block';
+  tooltip.style.left = (S.hover.sx + 14) + 'px';
+  tooltip.style.top  = (S.hover.sy + 10) + 'px';
+  tooltip.innerHTML =
+    '<div class="tooltip-title">Run ' + S.hover.runId + ' \u00B7 t = ' + S.hover.t + ' s</div>' +
+    '<div>x = <span class="hl">' + S.hover.x.toFixed(4) + '</span></div>' +
+    '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
+}
+
+/* =====================================================
+   Panel wiring
+   ===================================================== */
+function bindPanel() {
+  document.getElementById('runBtn').addEventListener('click', () => {
+    if (S.running && S.current) {
+      S.running = false;
+      updateRunButton();
+    } else if (S.current && !S.current.done) {
+      S.running = true;
+      updateRunButton();
+    } else {
+      newRun();
+      updateRunButton();
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    S.runs = [];
+    S.current = null;
+    S.running = false;
+    S.hover = null;
+    tooltip.style.display = 'none';
+    updateRunButton();
+    updateLiveReadout();
+    refreshDataTable();
+  });
+
+  document.getElementById('speedIn').addEventListener('input', (e) => {
+    S.speed = parseFloat(e.target.value);
+  });
+}
+
+function updateRunButton() {
+  const b = document.getElementById('runBtn');
+  if (!b) return;
+  if (S.running && S.current) b.textContent = 'Pause';
+  else if (S.current && !S.current.done) b.textContent = 'Continue';
+  else b.textContent = 'New Run';
+}
+
+function updateLiveReadout() {
+  const rc = document.getElementById('runCount');
+  if (rc) rc.textContent = S.runs.length;
+
+  const live = document.getElementById('liveText');
+  if (!live) return;
+
+  if (S.current) {
+    live.innerHTML = 'Current run ' + S.current.id +
+      ': t = <span class="hl" id="tNow">' + S.current.t.toFixed(1) + '</span> s';
+  } else if (S.runs.length === 0) {
+    live.textContent = 'Click "New Run" to begin.';
+  } else if (S.runs.length >= 10) {
+    live.textContent = 'All 10 runs complete.';
+  } else {
+    live.textContent = 'Latest: run #' + S.runs.length + ' complete.';
+  }
+}
+
+function refreshDataTable() {
+  const box = document.getElementById('dataTable');
+  if (!box) return;
+
+  if (S.runs.length === 0 && !S.current) {
+    box.innerHTML =
+      '<p style="font-size:.78rem;color:#6b7280;margin:.4rem 0;">No runs recorded yet.</p>';
+    return;
+  }
+
+  const all = [...S.runs];
+  if (S.current) all.push(S.current);
+
+  let html = '';
+  for (const run of all) {
+    const status = run.done ? '' : ' \u00B7 in progress';
+    html +=
+      '<details style="margin-top:.4rem;">' +
+        '<summary style="color:' + run.color + ';font-family:ui-monospace,monospace;font-size:.78rem;">' +
+          'Run ' + run.id + status +
+        '</summary>' +
+        '<table class="results">' +
+          '<tr><th>t (s)</th><th>x</th><th>y</th></tr>' +
+          run.markers.map(m =>
+            '<tr><td>' + m.t + '</td>' +
+            '<td>' + m.x.toFixed(4) + '</td>' +
+            '<td>' + m.y.toFixed(4) + '</td></tr>'
+          ).join('') +
+        '</table>' +
+      '</details>';
+  }
+  box.innerHTML = html;
+}
+
+/* =====================================================
+   Init
+   ===================================================== */
+window.addEventListener('resize', fitCanvas);
+
+fitCanvas();
+bindPanel();
+updateLiveReadout();
+refreshDataTable();
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>
