@@ -53,7 +53,14 @@
     border-right: 1px solid #2a2f3a;
     overflow: hidden;
   }
-  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;   /* so panning works on touch */
+  }
+  canvas.dragging { cursor: grabbing; }
 
   /* ---------- Tooltip ---------- */
   .tooltip {
@@ -114,15 +121,6 @@
   }
   .readout .hl { color: #ffd166; }
 
-  .hint {
-    font-size: 0.76rem;
-    color: #6b7280;
-    font-style: italic;
-    margin-top: auto;
-    padding-top: 1rem;
-    line-height: 1.5;
-  }
-
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
     .canvas-wrap { border-right: none; border-bottom: 1px solid #2a2f3a; }
@@ -133,7 +131,7 @@
 
 <header>
   <h1>Part A · 2D Random Walk</h1>
-  <span class="sub">hover a marker to read its (x, y, t)</span>
+  <span class="sub">drag to pan · hover a marker to read its (x, y, t)</span>
 </header>
 
 <main>
@@ -146,6 +144,9 @@
     <div class="control-row">
       <button id="runBtn" class="primary">New Run</button>
       <button id="clearBtn">Clear All</button>
+    </div>
+    <div class="control-row">
+      <button id="recenterBtn">Recenter View</button>
     </div>
 
     <div class="readout">
@@ -172,9 +173,9 @@ const COLORS = [
 
 /* ---- internal physics constants (not shown to the student) ---- */
 const PHYS = {
-  v: 4.11,        // step length per unit time is v·dt
-  dt: 0.01,    // s
-  T: 10,       // s total per run
+  v: 4.11,
+  dt: 0.01,   // s
+  T: 10,      // s per run
 };
 
 const S = {
@@ -186,7 +187,9 @@ const S = {
 };
 
 /* ---------- View transform ---------- */
-const view = { cx: 0, cy: 0, scale: 50 };
+/* panX, panY are screen-pixel offsets applied on top of (cx, cy).
+   Positive panX shifts the world to the right; positive panY shifts it down. */
+const view = { cx: 0, cy: 0, scale: 50, panX: 0, panY: 0 };
 
 function fitCanvas() {
   const r = canvas.getBoundingClientRect();
@@ -202,12 +205,21 @@ function updateView() {
   const h = canvas.clientHeight;
   view.cx = w / 2;
   view.cy = h / 2;
-  // Fixed visible window — students infer scale from hover values.
-  view.scale = Math.min(w, h) / 8;
+  view.scale = Math.min(w, h) / 8;   // 8 world-units across the shorter side
 }
 
 function w2s(x, y) {
-  return [view.cx + x * view.scale, view.cy - y * view.scale];
+  return [
+    view.cx + x * view.scale + view.panX,
+    view.cy - y * view.scale + view.panY,
+  ];
+}
+
+function s2w(sx, sy) {
+  return [
+    (sx - view.cx - view.panX) / view.scale,
+    (view.cy + view.panY - sy) / view.scale,
+  ];
 }
 
 /* ---------- Run lifecycle ---------- */
@@ -267,7 +279,7 @@ function loop(now) {
   lastFrame = now;
 
   if (S.running && S.current) {
-    S.acc += dtReal;                       // real time in seconds
+    S.acc += dtReal;
     let guard = 0;
     while (S.acc >= PHYS.dt && S.current && guard++ < 20000) {
       stepOnce();
@@ -301,18 +313,21 @@ function drawGrid() {
   const h = canvas.clientHeight;
   const step = 0.5;
 
+  const [xMinW, yMaxW] = s2w(0, 0);
+  const [xMaxW, yMinW] = s2w(w, h);
+
   ctx.strokeStyle = 'rgba(255,255,255,0.045)';
   ctx.lineWidth = 1;
   ctx.beginPath();
 
-  const xHalf = Math.ceil((w / 2) / view.scale / step) * step;
-  for (let x = -xHalf; x <= xHalf + 1e-9; x += step) {
+  const xStart = Math.floor(xMinW / step) * step;
+  for (let x = xStart; x <= xMaxW + 1e-9; x += step) {
     const [sx] = w2s(x, 0);
     ctx.moveTo(sx, 0);
     ctx.lineTo(sx, h);
   }
-  const yHalf = Math.ceil((h / 2) / view.scale / step) * step;
-  for (let y = -yHalf; y <= yHalf + 1e-9; y += step) {
+  const yStart = Math.floor(yMinW / step) * step;
+  for (let y = yStart; y <= yMaxW + 1e-9; y += step) {
     const [, sy] = w2s(0, y);
     ctx.moveTo(0, sy);
     ctx.lineTo(w, sy);
@@ -364,18 +379,19 @@ function drawRunMarkers(run, r) {
 }
 
 function drawOrigin() {
+  const [ox, oy] = w2s(0, 0);
   ctx.beginPath();
-  ctx.arc(view.cx, view.cy, 3, 0, Math.PI * 2);
+  ctx.arc(ox, oy, 3, 0, Math.PI * 2);
   ctx.fillStyle = '#ffd166';
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(255,209,102,0.5)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(view.cx - 8, view.cy);
-  ctx.lineTo(view.cx + 8, view.cy);
-  ctx.moveTo(view.cx, view.cy - 8);
-  ctx.lineTo(view.cx, view.cy + 8);
+  ctx.moveTo(ox - 8, oy);
+  ctx.lineTo(ox + 8, oy);
+  ctx.moveTo(ox, oy - 8);
+  ctx.lineTo(ox, oy + 8);
   ctx.stroke();
 }
 
@@ -409,9 +425,38 @@ function hexWithAlpha(hex, alpha) {
 }
 
 /* =====================================================
-   Hover / tooltip
+   Pointer: pan + hover
    ===================================================== */
-canvas.addEventListener('mousemove', (e) => {
+let dragging = false;
+let dragStartX = 0, dragStartY = 0;
+let panStartX = 0, panStartY = 0;
+let movedDuringDrag = false;
+
+canvas.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  movedDuringDrag = false;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  panStartX = view.panX;
+  panStartY = view.panY;
+  canvas.classList.add('dragging');
+  canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (dragging) {
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) movedDuringDrag = true;
+    view.panX = panStartX + dx;
+    view.panY = panStartY + dy;
+    // hide tooltip while dragging
+    S.hover = null;
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  // hover detection
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
@@ -438,7 +483,19 @@ canvas.addEventListener('mousemove', (e) => {
   updateTooltip();
 });
 
-canvas.addEventListener('mouseleave', () => {
+canvas.addEventListener('pointerup', (e) => {
+  dragging = false;
+  canvas.classList.remove('dragging');
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+});
+
+canvas.addEventListener('pointercancel', () => {
+  dragging = false;
+  canvas.classList.remove('dragging');
+});
+
+canvas.addEventListener('pointerleave', () => {
+  if (dragging) return;
   S.hover = null;
   updateTooltip();
 });
@@ -482,6 +539,11 @@ function bindPanel() {
     tooltip.style.display = 'none';
     updateRunButton();
     updateLiveReadout();
+  });
+
+  document.getElementById('recenterBtn').addEventListener('click', () => {
+    view.panX = 0;
+    view.panY = 0;
   });
 }
 
