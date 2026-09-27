@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Part A · 2D Random Walk</title>
+<title>Physics Olympiad Simulation Lab</title>
 <style>
   * { box-sizing: border-box; }
 
@@ -17,35 +17,52 @@
 
   body { display: flex; flex-direction: column; overflow: hidden; }
 
-  /* ---------- Header ---------- */
+  /* ---------- Header + nav ---------- */
   header {
     border-bottom: 1px solid #2a2f3a;
     flex-shrink: 0;
-    padding: 0.85rem 1.25rem;
+    padding: 0.65rem 1.25rem;
     display: flex;
-    align-items: baseline;
-    gap: 1rem;
+    align-items: center;
+    gap: 1.5rem;
     flex-wrap: wrap;
   }
   h1 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 600;
     letter-spacing: 0.01em;
   }
-  header .sub {
-    font-family: ui-monospace, monospace;
-    font-size: 0.78rem;
-    color: #8b93a1;
+
+  nav.parts {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .part-tab {
+    padding: 0.4rem 0.95rem;
+    font-size: 0.82rem;
+    border-radius: 999px;
+    border: 1px solid #3b4252;
+    background: transparent;
+    color: #c8cfda;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .part-tab:hover { background: #1f2530; }
+  .part-tab.active {
+    background: #1f3a5f;
+    border-color: #3b6ea5;
+    color: #cfe3ff;
   }
 
-  /* ---------- Main ---------- */
+  /* ---------- Main layout ---------- */
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
     flex: 1;
     min-height: 0;
   }
+  main[hidden] { display: none; }
 
   .canvas-wrap {
     position: relative;
@@ -53,16 +70,12 @@
     border-right: 1px solid #2a2f3a;
     overflow: hidden;
   }
-  canvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    cursor: grab;
-    touch-action: none;   /* so panning works on touch */
-  }
-  canvas.dragging { cursor: grabbing; }
+  canvas { display: block; width: 100%; height: 100%; }
 
-  /* ---------- Tooltip ---------- */
+  /* Part A canvas needs a crosshair cursor for hovering */
+  #simCanvasA { cursor: crosshair; }
+
+  /* ---------- Tooltip (Part A only) ---------- */
   .tooltip {
     position: absolute;
     pointer-events: none;
@@ -82,13 +95,14 @@
   .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
   .tooltip .hl { color: #ffd166; }
 
-  /* ---------- Panel ---------- */
+  /* ---------- Shared panel ---------- */
   .panel {
     padding: 1rem 1.15rem 2rem;
     overflow-y: auto;
     background: #151922;
     display: flex;
     flex-direction: column;
+    gap: 0.6rem;
   }
 
   .panel button {
@@ -101,25 +115,88 @@
     font-size: 0.85rem;
     font-family: inherit;
   }
-  .panel button:hover { background: #2a3140; }
+  .panel button:hover:not(:disabled) { background: #2a3140; }
   .panel button.primary {
     background: #1f3a5f;
     border-color: #3b6ea5;
     color: #cfe3ff;
   }
-  .panel button.primary:hover { background: #264a78; }
+  .panel button.primary:hover:not(:disabled) { background: #264a78; }
+  .panel button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .control-row { display: flex; gap: 0.5rem; margin-top: 0.3rem; }
+  .control-row { display: flex; gap: 0.5rem; }
   .control-row button { flex: 1; }
 
   .readout {
-    margin-top: 1rem;
     font-family: ui-monospace, monospace;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: #9aa4b2;
-    line-height: 1.8;
+    line-height: 1.7;
+    min-height: 1.5em;
   }
   .readout .hl { color: #ffd166; }
+
+  .panel hr {
+    border: none;
+    border-top: 1px solid #2a2f3a;
+    margin: 0.4rem 0;
+  }
+
+  /* ---------- Part B specific ---------- */
+  .dim-row { display: flex; gap: 0.35rem; }
+  .dim-btn {
+    flex: 1;
+    padding: 0.5rem 0.6rem !important;
+    font-size: 0.85rem;
+  }
+  .dim-btn.active {
+    background: #1f3a5f;
+    border-color: #3b6ea5;
+    color: #cfe3ff;
+  }
+
+  .panel label {
+    display: block;
+    font-size: 0.72rem;
+    color: #8b93a1;
+    margin: 0.4rem 0 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .panel input[type="number"] {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #3b4252;
+    background: #0f1117;
+    color: #e8eaf0;
+    font-size: 0.9rem;
+    font-family: ui-monospace, monospace;
+  }
+
+  table.summary {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: ui-monospace, monospace;
+  }
+  table.summary th, table.summary td {
+    padding: 0.32rem 0.35rem;
+    border-bottom: 1px solid #232833;
+    text-align: right;
+  }
+  table.summary th {
+    color: #6ea8fe;
+    font-weight: 500;
+  }
+  table.summary th:first-child, table.summary td:first-child { text-align: left; }
+  table.summary td { color: #c8cfda; }
+
+  .empty-note {
+    font-size: 0.78rem;
+    color: #6b7280;
+    font-style: italic;
+  }
 
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
@@ -130,456 +207,856 @@
 <body>
 
 <header>
-  <h1>Part A · 2D Random Walk</h1>
+  <h1>Physics Olympiad Simulation Lab</h1>
+  <nav class="parts">
+    <button class="part-tab active" data-part="A">Part A · 2D Random Walk</button>
+    <button class="part-tab" data-part="B">Part B · Lattice Walk</button>
+  </nav>
 </header>
 
-<main>
+<!-- ====================================================
+     PART A
+     ==================================================== -->
+<main id="viewA">
   <section class="canvas-wrap">
-    <canvas id="simCanvas"></canvas>
-    <div id="tooltip" class="tooltip"></div>
+    <canvas id="simCanvasA"></canvas>
+    <div id="tooltipA" class="tooltip"></div>
   </section>
 
-  <aside class="panel">
+  <aside class="panel" id="panelA">
     <div class="control-row">
-      <button id="runBtn" class="primary">New Run</button>
-      <button id="clearBtn">Clear All</button>
+      <button id="runBtnA" class="primary">New Run</button>
+      <button id="clearBtnA">Clear All</button>
     </div>
     <div class="control-row">
-      <button id="recenterBtn">Recenter View</button>
+      <button id="recenterBtnA">Recenter View</button>
     </div>
 
     <div class="readout">
-      Runs completed: <span class="hl" id="runCount">0</span><br>
-      <span id="liveText">Click "New Run" to begin.</span>
+      Runs completed: <span class="hl" id="runCountA">0</span><br>
+      <span id="liveTextA">Click "New Run" to begin.</span>
     </div>
+  </aside>
+</main>
+
+<!-- ====================================================
+     PART B
+     ==================================================== -->
+<main id="viewB" hidden>
+  <section class="canvas-wrap">
+    <canvas id="simCanvasB"></canvas>
+  </section>
+
+  <aside class="panel" id="panelB">
+    <div class="dim-row">
+      <button class="dim-btn" data-d="1">1D</button>
+      <button class="dim-btn active" data-d="2">2D</button>
+      <button class="dim-btn" data-d="3">3D</button>
+    </div>
+
+    <label for="nInput">Steps N</label>
+    <input id="nInput" type="number" value="1000" min="10" max="100000" step="10">
+
+    <div class="control-row">
+      <button id="runBtnB" class="primary">Run</button>
+      <button id="run10BtnB">Run 10×</button>
+    </div>
+    <button id="clearBtnB">Clear Data</button>
+
+    <div class="readout" id="readoutB">Ready.</div>
+
+    <hr>
+
+    <label>Summary</label>
+    <table class="summary" id="summaryTable">
+      <tr><th>d</th><th>N</th><th>n</th><th>mean</th></tr>
+    </table>
+    <div class="empty-note" id="emptyNoteB">No runs yet.</div>
   </aside>
 </main>
 
 <script>
 /* =====================================================
-   Part A · 2D Random Walk  ·  single particle
-   Internal constants are hidden from the UI on purpose.
+   Tab switching
    ===================================================== */
+(function () {
+  const tabs = document.querySelectorAll('.part-tab');
+  const views = { A: document.getElementById('viewA'), B: document.getElementById('viewB') };
 
-const canvas  = document.getElementById('simCanvas');
-const ctx     = canvas.getContext('2d');
-const tooltip = document.getElementById('tooltip');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const part = tab.dataset.part;
+      for (const k in views) views[k].hidden = (k !== part);
 
-const COLORS = [
-  '#6ea8fe', '#8bc9a0', '#ffd166', '#e88b8b', '#c8a2ff',
-  '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
-];
+      // Re-fit the now-visible canvas (it had zero size while hidden).
+      if (part === 'A') window.dispatchEvent(new Event('resize'));
+      if (part === 'B') window.dispatchEvent(new Event('resize'));
+    });
+  });
+})();
+</script>
 
-/* ---- internal physics constants (not shown to the student) ---- */
-const PHYS = {
-  v: 4.11,
-  dt: 0.01,   // s
-  T: 10,      // s per run
-};
+<script>
+/* =====================================================
+   PART A · 2D Random Walk
+   ===================================================== */
+(function () {
+  const canvas  = document.getElementById('simCanvasA');
+  const ctx     = canvas.getContext('2d');
+  const tooltip = document.getElementById('tooltipA');
 
-const S = {
-  runs: [],
-  current: null,
-  acc: 0,
-  running: false,
-  hover: null,
-};
-
-/* ---------- View transform ---------- */
-/* panX, panY are screen-pixel offsets applied on top of (cx, cy).
-   Positive panX shifts the world to the right; positive panY shifts it down. */
-const view = { cx: 0, cy: 0, scale: 50, panX: 0, panY: 0 };
-
-function fitCanvas() {
-  const r = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = Math.max(1, Math.round(r.width  * dpr));
-  canvas.height = Math.max(1, Math.round(r.height * dpr));
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  updateView();
-}
-
-function updateView() {
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  view.cx = w / 2;
-  view.cy = h / 2;
-  view.scale = Math.min(w, h) / 4;   // 4 world-units across the shorter side
-}
-
-function w2s(x, y) {
-  return [
-    view.cx + x * view.scale + view.panX,
-    view.cy - y * view.scale + view.panY,
+  const COLORS = [
+    '#6ea8fe', '#8bc9a0', '#ffd166', '#e88b8b', '#c8a2ff',
+    '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
   ];
-}
 
-function s2w(sx, sy) {
-  return [
-    (sx - view.cx - view.panX) / view.scale,
-    (view.cy + view.panY - sy) / view.scale,
-  ];
-}
+  const PHYS = { v: 4.11, dt: 0.01, T: 10 };
 
-/* ---------- Run lifecycle ---------- */
-function newRun() {
-  const id = S.runs.length + 1;
-  S.current = {
-    id,
-    color: COLORS[(id - 1) % COLORS.length],
-    t: 0,
-    steps: 0,
-    x: 0,
-    y: 0,
-    path: [[0, 0]],
-    markers: [{ t: 0, x: 0, y: 0 }],
-    done: false,
+  const S = {
+    runs: [],
+    current: null,
+    acc: 0,
+    running: false,
+    hover: null,
   };
-  S.acc = 0;
-  S.running = true;
-  updateLiveReadout();
-  updateRunButton();
-}
 
-function stepOnce() {
-  const c = S.current;
-  if (!c) return;
+  const view = { cx: 0, cy: 0, scale: 50, panX: 0, panY: 0 };
 
-  c.steps += 1;
-  const th = Math.random() * Math.PI * 2;
-  c.x += PHYS.v * PHYS.dt * Math.cos(th);
-  c.y += PHYS.v * PHYS.dt * Math.sin(th);
-  c.path.push([c.x, c.y]);
-
-  const tNow = c.steps * PHYS.dt;
-  c.t = tNow;
-
-  const nextSec = c.markers.length;
-  if (nextSec <= PHYS.T && tNow + 1e-9 >= nextSec) {
-    c.markers.push({ t: nextSec, x: c.x, y: c.y });
+  function fitCanvas() {
+    const r = canvas.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;   // hidden
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = Math.max(1, Math.round(r.width  * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateView();
   }
 
-  if (tNow + 1e-9 >= PHYS.T) {
-    c.t = PHYS.T;
-    c.done = true;
-    S.runs.push(c);
-    S.current = null;
-    S.running = false;
-    updateRunButton();
+  function updateView() {
+    view.cx = canvas.clientWidth / 2;
+    view.cy = canvas.clientHeight / 2;
+    view.scale = Math.min(canvas.clientWidth, canvas.clientHeight) / 4;
+  }
+
+  function w2s(x, y) {
+    return [
+      view.cx + x * view.scale + view.panX,
+      view.cy - y * view.scale + view.panY,
+    ];
+  }
+
+  function s2w(sx, sy) {
+    return [
+      (sx - view.cx - view.panX) / view.scale,
+      (view.cy + view.panY - sy) / view.scale,
+    ];
+  }
+
+  function newRun() {
+    const id = S.runs.length + 1;
+    S.current = {
+      id,
+      color: COLORS[(id - 1) % COLORS.length],
+      t: 0, steps: 0, x: 0, y: 0,
+      path: [[0, 0]],
+      markers: [{ t: 0, x: 0, y: 0 }],
+      done: false,
+    };
+    S.acc = 0;
+    S.running = true;
     updateLiveReadout();
+    updateRunButton();
   }
-}
 
-/* ---------- Main loop (real time) ---------- */
-let lastFrame = performance.now();
+  function stepOnce() {
+    const c = S.current;
+    if (!c) return;
+    c.steps++;
+    const th = Math.random() * Math.PI * 2;
+    c.x += PHYS.v * PHYS.dt * Math.cos(th);
+    c.y += PHYS.v * PHYS.dt * Math.sin(th);
+    c.path.push([c.x, c.y]);
 
-function loop(now) {
-  const dtReal = Math.min((now - lastFrame) / 1000, 0.05);
-  lastFrame = now;
+    const tNow = c.steps * PHYS.dt;
+    c.t = tNow;
 
-  if (S.running && S.current) {
-    S.acc += dtReal;
-    let guard = 0;
-    while (S.acc >= PHYS.dt && S.current && guard++ < 20000) {
-      stepOnce();
-      S.acc -= PHYS.dt;
+    const nextSec = c.markers.length;
+    if (nextSec <= PHYS.T && tNow + 1e-9 >= nextSec) {
+      c.markers.push({ t: nextSec, x: c.x, y: c.y });
     }
-    const tEl = document.getElementById('tNow');
-    if (tEl && S.current) tEl.textContent = S.current.t.toFixed(2);
-  }
 
-  render();
-  requestAnimationFrame(loop);
-}
-
-/* =====================================================
-   Rendering
-   ===================================================== */
-function render() {
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  ctx.clearRect(0, 0, w, h);
-
-  drawGrid();
-  drawAllRuns();
-  drawOrigin();
-  drawHoverRing();
-  drawOverlay();
-}
-
-function drawGrid() {
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  const step = 0.5;
-
-  const [xMinW, yMaxW] = s2w(0, 0);
-  const [xMaxW, yMinW] = s2w(w, h);
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-
-  const xStart = Math.floor(xMinW / step) * step;
-  for (let x = xStart; x <= xMaxW + 1e-9; x += step) {
-    const [sx] = w2s(x, 0);
-    ctx.moveTo(sx, 0);
-    ctx.lineTo(sx, h);
-  }
-  const yStart = Math.floor(yMinW / step) * step;
-  for (let y = yStart; y <= yMaxW + 1e-9; y += step) {
-    const [, sy] = w2s(0, y);
-    ctx.moveTo(0, sy);
-    ctx.lineTo(w, sy);
-  }
-  ctx.stroke();
-}
-
-function drawAllRuns() {
-  for (let i = 0; i < S.runs.length - 1; i++) {
-    drawRunPath(S.runs[i], 0.18);
-  }
-  if (S.runs.length > 0) {
-    const last = S.runs[S.runs.length - 1];
-    drawRunPath(last, 0.55);
-    drawRunMarkers(last, 3.5);
-  }
-  if (S.current) {
-    drawRunPath(S.current, 1.0);
-    drawRunMarkers(S.current, 4.5);
-  }
-}
-
-function drawRunPath(run, alpha) {
-  if (run.path.length < 2) return;
-  ctx.beginPath();
-  const [sx0, sy0] = w2s(run.path[0][0], run.path[0][1]);
-  ctx.moveTo(sx0, sy0);
-  for (let i = 1; i < run.path.length; i++) {
-    const [sx, sy] = w2s(run.path[i][0], run.path[i][1]);
-    ctx.lineTo(sx, sy);
-  }
-  ctx.strokeStyle = hexWithAlpha(run.color, alpha);
-  ctx.lineWidth = 1.5;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-}
-
-function drawRunMarkers(run, r) {
-  for (const m of run.markers) {
-    const [sx, sy] = w2s(m.x, m.y);
-    ctx.beginPath();
-    ctx.arc(sx, sy, m.t === 0 ? r + 1.5 : r, 0, Math.PI * 2);
-    ctx.fillStyle = m.t === 0 ? '#ffd166' : run.color;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-}
-
-function drawOrigin() {
-  const [ox, oy] = w2s(0, 0);
-  ctx.beginPath();
-  ctx.arc(ox, oy, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffd166';
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgba(255,209,102,0.5)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(ox - 8, oy);
-  ctx.lineTo(ox + 8, oy);
-  ctx.moveTo(ox, oy - 8);
-  ctx.lineTo(ox, oy + 8);
-  ctx.stroke();
-}
-
-function drawHoverRing() {
-  if (!S.hover) return;
-  const [sx, sy] = w2s(S.hover.x, S.hover.y);
-  ctx.beginPath();
-  ctx.arc(sx, sy, 9, 0, Math.PI * 2);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-}
-
-function drawOverlay() {
-  ctx.font = '12px ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(200,207,218,0.75)';
-  ctx.fillText('Runs completed: ' + S.runs.length, 14, 22);
-  if (S.current) {
-    ctx.fillStyle = 'rgba(255,209,102,0.9)';
-    ctx.fillText('t = ' + S.current.t.toFixed(2) + ' s', 14, 42);
-  }
-}
-
-function hexWithAlpha(hex, alpha) {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-}
-
-/* =====================================================
-   Pointer: pan + hover
-   ===================================================== */
-let dragging = false;
-let dragStartX = 0, dragStartY = 0;
-let panStartX = 0, panStartY = 0;
-let movedDuringDrag = false;
-
-canvas.addEventListener('pointerdown', (e) => {
-  dragging = true;
-  movedDuringDrag = false;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  panStartX = view.panX;
-  panStartY = view.panY;
-  canvas.classList.add('dragging');
-  canvas.setPointerCapture(e.pointerId);
-});
-
-canvas.addEventListener('pointermove', (e) => {
-  if (dragging) {
-    const dx = e.clientX - dragStartX;
-    const dy = e.clientY - dragStartY;
-    if (Math.abs(dx) + Math.abs(dy) > 3) movedDuringDrag = true;
-    view.panX = panStartX + dx;
-    view.panY = panStartY + dy;
-    // hide tooltip while dragging
-    S.hover = null;
-    tooltip.style.display = 'none';
-    return;
-  }
-
-  // hover detection
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  const hoverable = [];
-  if (S.current) hoverable.push(S.current);
-  if (S.runs.length > 0) hoverable.push(S.runs[S.runs.length - 1]);
-
-  let best = null;
-  let bestDist = 16;
-
-  for (const run of hoverable) {
-    for (const m of run.markers) {
-      const [sx, sy] = w2s(m.x, m.y);
-      const d = Math.hypot(sx - mx, sy - my);
-      if (d < bestDist) {
-        bestDist = d;
-        best = { ...m, runId: run.id, sx, sy };
-      }
-    }
-  }
-
-  S.hover = best;
-  updateTooltip();
-});
-
-canvas.addEventListener('pointerup', (e) => {
-  dragging = false;
-  canvas.classList.remove('dragging');
-  try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
-});
-
-canvas.addEventListener('pointercancel', () => {
-  dragging = false;
-  canvas.classList.remove('dragging');
-});
-
-canvas.addEventListener('pointerleave', () => {
-  if (dragging) return;
-  S.hover = null;
-  updateTooltip();
-});
-
-function updateTooltip() {
-  if (!S.hover) {
-    tooltip.style.display = 'none';
-    return;
-  }
-  tooltip.style.display = 'block';
-  tooltip.style.left = (S.hover.sx + 14) + 'px';
-  tooltip.style.top  = (S.hover.sy + 10) + 'px';
-  tooltip.innerHTML =
-    '<div class="tooltip-title">Run ' + S.hover.runId + ' \u00B7 t = ' + S.hover.t + ' s</div>' +
-    '<div>x = <span class="hl">' + S.hover.x.toFixed(4) + '</span></div>' +
-    '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
-}
-
-/* =====================================================
-   Panel wiring
-   ===================================================== */
-function bindPanel() {
-  document.getElementById('runBtn').addEventListener('click', () => {
-    if (S.running && S.current) {
+    if (tNow + 1e-9 >= PHYS.T) {
+      c.t = PHYS.T;
+      c.done = true;
+      S.runs.push(c);
+      S.current = null;
       S.running = false;
       updateRunButton();
-    } else if (S.current && !S.current.done) {
-      S.running = true;
-      updateRunButton();
-    } else {
-      newRun();
-      updateRunButton();
+      updateLiveReadout();
     }
+  }
+
+  let lastFrame = performance.now();
+
+  function loop(now) {
+    const dtReal = Math.min((now - lastFrame) / 1000, 0.05);
+    lastFrame = now;
+
+    if (S.running && S.current && !document.getElementById('viewA').hidden) {
+      S.acc += dtReal;
+      let guard = 0;
+      while (S.acc >= PHYS.dt && S.current && guard++ < 20000) {
+        stepOnce();
+        S.acc -= PHYS.dt;
+      }
+      const tEl = document.getElementById('tNowA');
+      if (tEl && S.current) tEl.textContent = S.current.t.toFixed(2);
+    }
+
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function render() {
+    if (document.getElementById('viewA').hidden) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    drawGrid();
+    drawAllRuns();
+    drawOrigin();
+    drawHoverRing();
+    drawOverlay();
+  }
+
+  function drawGrid() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const step = 0.5;
+    const [xMinW, yMaxW] = s2w(0, 0);
+    const [xMaxW, yMinW] = s2w(w, h);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    const xStart = Math.floor(xMinW / step) * step;
+    for (let x = xStart; x <= xMaxW + 1e-9; x += step) {
+      const [sx] = w2s(x, 0);
+      ctx.moveTo(sx, 0); ctx.lineTo(sx, h);
+    }
+    const yStart = Math.floor(yMinW / step) * step;
+    for (let y = yStart; y <= yMaxW + 1e-9; y += step) {
+      const [, sy] = w2s(0, y);
+      ctx.moveTo(0, sy); ctx.lineTo(w, sy);
+    }
+    ctx.stroke();
+  }
+
+  function drawAllRuns() {
+    for (let i = 0; i < S.runs.length - 1; i++) drawRunPath(S.runs[i], 0.18);
+    if (S.runs.length > 0) {
+      const last = S.runs[S.runs.length - 1];
+      drawRunPath(last, 0.55);
+      drawRunMarkers(last, 3.5);
+    }
+    if (S.current) {
+      drawRunPath(S.current, 1.0);
+      drawRunMarkers(S.current, 4.5);
+    }
+  }
+
+  function drawRunPath(run, alpha) {
+    if (run.path.length < 2) return;
+    ctx.beginPath();
+    const [sx0, sy0] = w2s(run.path[0][0], run.path[0][1]);
+    ctx.moveTo(sx0, sy0);
+    for (let i = 1; i < run.path.length; i++) {
+      const [sx, sy] = w2s(run.path[i][0], run.path[i][1]);
+      ctx.lineTo(sx, sy);
+    }
+    ctx.strokeStyle = hexWithAlpha(run.color, alpha);
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
+
+  function drawRunMarkers(run, r) {
+    for (const m of run.markers) {
+      const [sx, sy] = w2s(m.x, m.y);
+      ctx.beginPath();
+      ctx.arc(sx, sy, m.t === 0 ? r + 1.5 : r, 0, Math.PI * 2);
+      ctx.fillStyle = m.t === 0 ? '#ffd166' : run.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+
+  function drawOrigin() {
+    const [ox, oy] = w2s(0, 0);
+    ctx.beginPath();
+    ctx.arc(ox, oy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,209,102,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(ox - 8, oy); ctx.lineTo(ox + 8, oy);
+    ctx.moveTo(ox, oy - 8); ctx.lineTo(ox, oy + 8);
+    ctx.stroke();
+  }
+
+  function drawHoverRing() {
+    if (!S.hover) return;
+    const [sx, sy] = w2s(S.hover.x, S.hover.y);
+    ctx.beginPath();
+    ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function drawOverlay() {
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(200,207,218,0.75)';
+    ctx.fillText('Runs completed: ' + S.runs.length, 14, 22);
+    if (S.current) {
+      ctx.fillStyle = 'rgba(255,209,102,0.9)';
+      ctx.fillText('t = ' + S.current.t.toFixed(2) + ' s', 14, 42);
+    }
+  }
+
+  function hexWithAlpha(hex, alpha) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  /* ---- Pointer: pan + hover ---- */
+  let dragging = false;
+  let dragStartX = 0, dragStartY = 0;
+  let panStartX = 0, panStartY = 0;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    panStartX = view.panX;
+    panStartY = view.panY;
+    canvas.setPointerCapture(e.pointerId);
   });
 
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    S.runs = [];
-    S.current = null;
-    S.running = false;
+  canvas.addEventListener('pointermove', (e) => {
+    if (dragging) {
+      view.panX = panStartX + (e.clientX - dragStartX);
+      view.panY = panStartY + (e.clientY - dragStartY);
+      S.hover = null;
+      tooltip.style.display = 'none';
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const hoverable = [];
+    if (S.current) hoverable.push(S.current);
+    if (S.runs.length > 0) hoverable.push(S.runs[S.runs.length - 1]);
+
+    let best = null, bestDist = 16;
+    for (const run of hoverable) {
+      for (const m of run.markers) {
+        const [sx, sy] = w2s(m.x, m.y);
+        const d = Math.hypot(sx - mx, sy - my);
+        if (d < bestDist) { bestDist = d; best = { ...m, runId: run.id, sx, sy }; }
+      }
+    }
+    S.hover = best;
+    updateTooltip();
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    dragging = false;
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  });
+  canvas.addEventListener('pointercancel', () => { dragging = false; });
+  canvas.addEventListener('pointerleave', () => {
+    if (dragging) return;
     S.hover = null;
+    updateTooltip();
+  });
+
+  function updateTooltip() {
+    if (!S.hover) { tooltip.style.display = 'none'; return; }
+    tooltip.style.display = 'block';
+    tooltip.style.left = (S.hover.sx + 14) + 'px';
+    tooltip.style.top  = (S.hover.sy + 10) + 'px';
+    tooltip.innerHTML =
+      '<div class="tooltip-title">Run ' + S.hover.runId + ' \u00B7 t = ' + S.hover.t + ' s</div>' +
+      '<div>x = <span class="hl">' + S.hover.x.toFixed(4) + '</span></div>' +
+      '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
+  }
+
+  /* ---- Panel wiring ---- */
+  document.getElementById('runBtnA').addEventListener('click', () => {
+    if (S.running && S.current) { S.running = false; updateRunButton(); }
+    else if (S.current && !S.current.done) { S.running = true; updateRunButton(); }
+    else { newRun(); updateRunButton(); }
+  });
+
+  document.getElementById('clearBtnA').addEventListener('click', () => {
+    S.runs = []; S.current = null; S.running = false; S.hover = null;
     tooltip.style.display = 'none';
     updateRunButton();
     updateLiveReadout();
   });
 
-  document.getElementById('recenterBtn').addEventListener('click', () => {
-    view.panX = 0;
-    view.panY = 0;
+  document.getElementById('recenterBtnA').addEventListener('click', () => {
+    view.panX = 0; view.panY = 0;
   });
-}
 
-function updateRunButton() {
-  const b = document.getElementById('runBtn');
-  if (!b) return;
-  if (S.running && S.current) b.textContent = 'Pause';
-  else if (S.current && !S.current.done) b.textContent = 'Continue';
-  else b.textContent = 'New Run';
-}
-
-function updateLiveReadout() {
-  const rc = document.getElementById('runCount');
-  if (rc) rc.textContent = S.runs.length;
-
-  const live = document.getElementById('liveText');
-  if (!live) return;
-
-  if (S.current) {
-    live.innerHTML = 'Current run ' + S.current.id +
-      ': t = <span class="hl" id="tNow">' + S.current.t.toFixed(2) + '</span> s';
-  } else if (S.runs.length === 0) {
-    live.textContent = 'Click "New Run" to begin.';
-  } else {
-    live.textContent = 'Latest: run #' + S.runs.length + ' complete.';
+  function updateRunButton() {
+    const b = document.getElementById('runBtnA');
+    if (S.running && S.current) b.textContent = 'Pause';
+    else if (S.current && !S.current.done) b.textContent = 'Continue';
+    else b.textContent = 'New Run';
   }
-}
 
-/* =====================================================
-   Init
-   ===================================================== */
-window.addEventListener('resize', fitCanvas);
+  function updateLiveReadout() {
+    const rc = document.getElementById('runCountA');
+    if (rc) rc.textContent = S.runs.length;
 
-fitCanvas();
-bindPanel();
-updateLiveReadout();
-requestAnimationFrame(loop);
+    const live = document.getElementById('liveTextA');
+    if (!live) return;
+    if (S.current) {
+      live.innerHTML = 'Current run ' + S.current.id +
+        ': t = <span class="hl" id="tNowA">' + S.current.t.toFixed(2) + '</span> s';
+    } else if (S.runs.length === 0) {
+      live.textContent = 'Click "New Run" to begin.';
+    } else {
+      live.textContent = 'Latest: run #' + S.runs.length + ' complete.';
+    }
+  }
+
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+  updateLiveReadout();
+  requestAnimationFrame(loop);
+})();
 </script>
+
+<script>
+/* =====================================================
+   PART B · Lattice Random Walk
+   ===================================================== */
+(function () {
+  const canvas       = document.getElementById('simCanvasB');
+  const ctx          = canvas.getContext('2d');
+  const summaryTable = document.getElementById('summaryTable');
+  const emptyNote    = document.getElementById('emptyNoteB');
+  const readoutEl    = document.getElementById('readoutB');
+
+  const S = {
+    d: 2,
+    N: 1000,
+    animating: false,
+    anim: null,
+    last: null,
+    log: [],
+    stepAcc: 0,
+  };
+
+  function fitCanvas() {
+    const r = canvas.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width  = Math.max(1, Math.round(r.width  * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function randomUnitVector(d) {
+    const k = Math.floor(Math.random() * 2 * d);
+    const axis = Math.floor(k / 2);
+    const sign = (k % 2 === 0) ? 1 : -1;
+    const v = new Array(d).fill(0);
+    v[axis] = sign;
+    return v;
+  }
+
+  function createWalk(d, N) {
+    return {
+      d, N,
+      pos: new Array(d).fill(0),
+      path: [new Array(d).fill(0)],
+      returns: 0,
+      returnSteps: [],
+      stepIdx: 0,
+      done: false,
+    };
+  }
+
+  function advanceWalk(w) {
+    if (w.done) return;
+    const step = randomUnitVector(w.d);
+    for (let k = 0; k < w.d; k++) w.pos[k] += step[k];
+    w.path.push([...w.pos]);
+    w.stepIdx++;
+    if (w.pos.every(v => v === 0)) {
+      w.returns++;
+      w.returnSteps.push(w.stepIdx);
+    }
+    if (w.stepIdx >= w.N) w.done = true;
+  }
+
+  function runToCompletion(d, N) {
+    const w = createWalk(d, N);
+    while (!w.done) advanceWalk(w);
+    return w;
+  }
+
+  function render() {
+    if (document.getElementById('viewB').hidden) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+
+    const walk = S.anim || S.last;
+    if (!walk) {
+      ctx.fillStyle = 'rgba(200,207,218,0.4)';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Press Run to begin.', w / 2, h / 2);
+      return;
+    }
+
+    if (walk.d === 1)      render1D(walk);
+    else if (walk.d === 2) render2D(walk);
+    else                   render3D(walk);
+
+    drawOverlay(walk);
+  }
+
+  function render1D(walk) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const padL = 70, padR = 40, padT = 40, padB = 40;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    let maxAbs = Math.max(1, Math.sqrt(walk.N) * 2);
+    for (const p of walk.path) maxAbs = Math.max(maxAbs, Math.abs(p[0]) * 1.15);
+
+    const cy0 = padT + plotH / 2;
+    const mapX = n => padL + (n / walk.N) * plotW;
+    const mapY = x => cy0 - (x / maxAbs) * (plotH / 2);
+
+    ctx.strokeStyle = 'rgba(200,207,218,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, cy0); ctx.lineTo(padL + plotW, cy0);
+    ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(200,207,218,0.55)';
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('0', padL, cy0 + 15);
+    ctx.fillText(walk.N.toString(), padL + plotW, cy0 + 15);
+    ctx.textAlign = 'right';
+    ctx.fillText('+' + maxAbs.toFixed(0), padL - 6, padT + 12);
+    ctx.fillText('0', padL - 6, cy0 + 4);
+    ctx.fillText('-' + maxAbs.toFixed(0), padL - 6, padT + plotH + 4);
+
+    ctx.beginPath();
+    ctx.moveTo(mapX(0), mapY(walk.path[0][0]));
+    for (let i = 1; i < walk.path.length; i++) {
+      ctx.lineTo(mapX(i), mapY(walk.path[i][0]));
+    }
+    ctx.strokeStyle = '#6ea8fe';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    for (const step of walk.returnSteps) {
+      ctx.beginPath();
+      ctx.arc(mapX(step), mapY(0), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd166';
+      ctx.fill();
+    }
+
+    if (S.anim && !S.anim.done) {
+      ctx.beginPath();
+      ctx.arc(mapX(walk.stepIdx), mapY(walk.pos[0]), 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+  }
+
+  function render2D(walk) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const cx = w / 2, cy = h / 2;
+
+    let maxR = 1;
+    for (const p of walk.path) {
+      const r = Math.hypot(p[0], p[1]);
+      if (r > maxR) maxR = r;
+    }
+    maxR *= 1.1;
+
+    const scale = Math.min(w, h) / (2 * maxR);
+    const w2s = (x, y) => [cx + x * scale, cy - y * scale];
+
+    const spacing = niceGridSpacing(maxR);
+    const nGrid = Math.ceil(maxR / spacing) + 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -nGrid; i <= nGrid; i++) {
+      const [sx] = w2s(i * spacing, 0);
+      ctx.moveTo(sx, 0); ctx.lineTo(sx, h);
+      const [, sy] = w2s(0, i * spacing);
+      ctx.moveTo(0, sy); ctx.lineTo(w, sy);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    const [sx0, sy0] = w2s(walk.path[0][0], walk.path[0][1]);
+    ctx.moveTo(sx0, sy0);
+    for (let i = 1; i < walk.path.length; i++) {
+      const [sx, sy] = w2s(walk.path[i][0], walk.path[i][1]);
+      ctx.lineTo(sx, sy);
+    }
+    ctx.strokeStyle = 'rgba(110,168,254,0.85)';
+    ctx.lineWidth = 1.2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166';
+    ctx.fill();
+
+    if (S.anim && !S.anim.done) {
+      const [px, py] = w2s(walk.pos[0], walk.pos[1]);
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+  }
+
+  function render3D(walk) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const cx = w / 2, cy = h / 2;
+
+    const cos30 = Math.cos(Math.PI / 6);
+    const sin30 = 0.5;
+
+    const proj = (p) => {
+      const ix = (p[0] - p[2]) * cos30;
+      const iy = (p[0] + p[2]) * sin30 - p[1];
+      return [ix, iy];
+    };
+
+    let maxIso = 1;
+    for (const p of walk.path) {
+      const [ix, iy] = proj(p);
+      const r = Math.hypot(ix, iy);
+      if (r > maxIso) maxIso = r;
+    }
+    maxIso *= 1.1;
+
+    const scale = Math.min(w, h) / (2 * maxIso);
+    const w2s = (p) => {
+      const [ix, iy] = proj(p);
+      return [cx + ix * scale, cy - iy * scale];
+    };
+
+    const axisLen = maxIso * 0.55;
+    const drawAxis = (vec, color) => {
+      const [ox, oy] = w2s([0, 0, 0]);
+      const [ax, ay] = w2s([vec[0] * axisLen, vec[1] * axisLen, vec[2] * axisLen]);
+      ctx.beginPath();
+      ctx.moveTo(ox, oy); ctx.lineTo(ax, ay);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    drawAxis([1, 0, 0], 'rgba(255,120,120,0.35)');
+    drawAxis([0, 1, 0], 'rgba(120,255,120,0.35)');
+    drawAxis([0, 0, 1], 'rgba(120,120,255,0.35)');
+
+    ctx.beginPath();
+    const [sx0, sy0] = w2s(walk.path[0]);
+    ctx.moveTo(sx0, sy0);
+    for (let i = 1; i < walk.path.length; i++) {
+      const [sx, sy] = w2s(walk.path[i]);
+      ctx.lineTo(sx, sy);
+    }
+    ctx.strokeStyle = 'rgba(110,168,254,0.85)';
+    ctx.lineWidth = 1.2;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166';
+    ctx.fill();
+
+    if (S.anim && !S.anim.done) {
+      const [px, py] = w2s(walk.pos);
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+  }
+
+  function niceGridSpacing(maxR) {
+    const candidates = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+    for (const c of candidates) if (maxR / c < 8) return c;
+    return 2000;
+  }
+
+  function drawOverlay(walk) {
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(200,207,218,0.75)';
+    ctx.fillText('d = ' + walk.d + 'D   N = ' + walk.N, 14, 22);
+    ctx.fillText('step ' + walk.stepIdx + ' / ' + walk.N, 14, 40);
+    ctx.fillStyle = 'rgba(255,209,102,0.95)';
+    ctx.fillText('returns: ' + walk.returns, 14, 58);
+  }
+
+  let lastFrameTime = performance.now();
+
+  function loop(now) {
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+    lastFrameTime = now;
+
+    if (!document.getElementById('viewB').hidden && S.animating && S.anim && !S.anim.done) {
+      const rate = Math.max(60, S.anim.N / 3);
+      S.stepAcc += dt * rate;
+      let guard = 0;
+      while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 5000) {
+        advanceWalk(S.anim);
+        S.stepAcc -= 1;
+      }
+      if (S.anim && S.anim.done) {
+        S.log.push({ d: S.anim.d, N: S.anim.N, returns: S.anim.returns });
+        S.last = S.anim;
+        S.anim = null;
+        S.animating = false;
+        updateUI();
+      }
+    }
+
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  /* ---- Panel wiring ---- */
+  document.querySelectorAll('#panelB .dim-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (S.animating) return;
+      document.querySelectorAll('#panelB .dim-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.d = parseInt(btn.dataset.d, 10);
+      S.last = null;
+      updateUI();
+    });
+  });
+
+  document.getElementById('runBtnB').addEventListener('click', () => {
+    if (S.animating) return;
+    const N = parseInt(document.getElementById('nInput').value, 10);
+    if (!N || N < 1) return;
+
+    if (N <= 2000) {
+      S.anim = createWalk(S.d, N);
+      S.animating = true;
+      S.stepAcc = 0;
+      lastFrameTime = performance.now();
+      updateUI();
+    } else {
+      const walk = runToCompletion(S.d, N);
+      S.log.push({ d: walk.d, N: walk.N, returns: walk.returns });
+      S.last = walk;
+      updateUI();
+    }
+  });
+
+  document.getElementById('run10BtnB').addEventListener('click', () => {
+    if (S.animating) return;
+    const N = parseInt(document.getElementById('nInput').value, 10);
+    if (!N || N < 1) return;
+    for (let i = 0; i < 10; i++) {
+      const walk = runToCompletion(S.d, N);
+      S.log.push({ d: walk.d, N: walk.N, returns: walk.returns });
+      S.last = walk;
+    }
+    updateUI();
+  });
+
+  document.getElementById('clearBtnB').addEventListener('click', () => {
+    if (S.animating) return;
+    S.log = []; S.last = null; S.anim = null;
+    updateUI();
+  });
+
+  document.getElementById('nInput').addEventListener('change', updateUI);
+
+  function updateUI() {
+    const disabled = S.animating;
+    document.getElementById('runBtnB').disabled = disabled;
+    document.getElementById('run10BtnB').disabled = disabled;
+    document.getElementById('clearBtnB').disabled = disabled;
+    document.querySelectorAll('#panelB .dim-btn').forEach(b => b.disabled = disabled);
+
+    if (S.anim) {
+      readoutEl.innerHTML = 'Running d=' + S.anim.d + ', N=' + S.anim.N + '\u2026';
+    } else if (S.last) {
+      readoutEl.innerHTML =
+        'Last run: d=' + S.last.d +
+        ', N=' + S.last.N +
+        ', returns=<span class="hl">' + S.last.returns + '</span>';
+    } else {
+      readoutEl.textContent = 'Ready.';
+    }
+
+    const groups = new Map();
+    for (const e of S.log) {
+      const key = e.d + '_' + e.N;
+      if (!groups.has(key)) groups.set(key, { d: e.d, N: e.N, runs: [] });
+      groups.get(key).runs.push(e.returns);
+    }
+    const keys = Array.from(groups.keys()).sort((a, b) => {
+      const ga = groups.get(a), gb = groups.get(b);
+      if (ga.d !== gb.d) return ga.d - gb.d;
+      return ga.N - gb.N;
+    });
+
+    let html = '<tr><th>d</th><th>N</th><th>n</th><th>mean</th></tr>';
+    for (const k of keys) {
+      const g = groups.get(k);
+      const n = g.runs.length;
+      const mean = g.runs.reduce((a, b) => a + b, 0) / n;
+      html += '<tr><td>' + g.d + 'D</td><td>' + g.N + '</td><td>' + n +
+              '</td><td>' + mean.toFixed(3) + '</td></tr>';
+    }
+    summaryTable.innerHTML = html;
+    emptyNote.style.display = keys.length === 0 ? 'block' : 'none';
+  }
+
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+  updateUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+
 </body>
 </html>
