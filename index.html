@@ -131,7 +131,6 @@
 
 <header>
   <h1>Part A · 2D Random Walk</h1>
-  <span class="sub">drag to pan · hover a marker to read its (x, y, t)</span>
 </header>
 
 <main>
@@ -205,7 +204,7 @@ function updateView() {
   const h = canvas.clientHeight;
   view.cx = w / 2;
   view.cy = h / 2;
-  view.scale = Math.min(w, h) / 5;   // 5 world-units across the shorter side
+  view.scale = Math.min(w, h) / 4;   // 4 world-units across the shorter side
 }
 
 function w2s(x, y) {
