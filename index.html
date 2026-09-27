@@ -17,7 +17,6 @@
 
   body { display: flex; flex-direction: column; overflow: hidden; }
 
-  /* ---------- Header + nav ---------- */
   header {
     border-bottom: 1px solid #2a2f3a;
     flex-shrink: 0;
@@ -27,17 +26,9 @@
     gap: 1.5rem;
     flex-wrap: wrap;
   }
-  h1 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-  }
+  h1 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; }
 
-  nav.parts {
-    display: flex;
-    gap: 0.4rem;
-  }
+  nav.parts { display: flex; gap: 0.4rem; }
   .part-tab {
     padding: 0.4rem 0.95rem;
     font-size: 0.82rem;
@@ -55,7 +46,6 @@
     color: #cfe3ff;
   }
 
-  /* ---------- Main layout ---------- */
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -71,11 +61,8 @@
     overflow: hidden;
   }
   canvas { display: block; width: 100%; height: 100%; }
-
-  /* Part A canvas needs a crosshair cursor for hovering */
   #simCanvasA { cursor: crosshair; }
 
-  /* ---------- Tooltip (Part A only) ---------- */
   .tooltip {
     position: absolute;
     pointer-events: none;
@@ -95,7 +82,6 @@
   .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
   .tooltip .hl { color: #ffd166; }
 
-  /* ---------- Shared panel ---------- */
   .panel {
     padding: 1rem 1.15rem 2rem;
     overflow-y: auto;
@@ -136,13 +122,6 @@
   }
   .readout .hl { color: #ffd166; }
 
-  .panel hr {
-    border: none;
-    border-top: 1px solid #2a2f3a;
-    margin: 0.4rem 0;
-  }
-
-  /* ---------- Part B specific ---------- */
   .dim-row { display: flex; gap: 0.35rem; }
   .dim-btn {
     flex: 1;
@@ -172,30 +151,6 @@
     color: #e8eaf0;
     font-size: 0.9rem;
     font-family: ui-monospace, monospace;
-  }
-
-  table.summary {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-    font-family: ui-monospace, monospace;
-  }
-  table.summary th, table.summary td {
-    padding: 0.32rem 0.35rem;
-    border-bottom: 1px solid #232833;
-    text-align: right;
-  }
-  table.summary th {
-    color: #6ea8fe;
-    font-weight: 500;
-  }
-  table.summary th:first-child, table.summary td:first-child { text-align: left; }
-  table.summary td { color: #c8cfda; }
-
-  .empty-note {
-    font-size: 0.78rem;
-    color: #6b7280;
-    font-style: italic;
   }
 
   @media (max-width: 900px) {
@@ -259,19 +214,10 @@
 
     <div class="control-row">
       <button id="runBtnB" class="primary">Run</button>
-      <button id="run10BtnB">Run 10×</button>
+      <button id="clearBtnB">Clear</button>
     </div>
-    <button id="clearBtnB">Clear Data</button>
 
     <div class="readout" id="readoutB">Ready.</div>
-
-    <hr>
-
-    <label>Summary</label>
-    <table class="summary" id="summaryTable">
-      <tr><th>d</th><th>N</th><th>n</th><th>mean</th></tr>
-    </table>
-    <div class="empty-note" id="emptyNoteB">No runs yet.</div>
   </aside>
 </main>
 
@@ -289,10 +235,7 @@
       tab.classList.add('active');
       const part = tab.dataset.part;
       for (const k in views) views[k].hidden = (k !== part);
-
-      // Re-fit the now-visible canvas (it had zero size while hidden).
-      if (part === 'A') window.dispatchEvent(new Event('resize'));
-      if (part === 'B') window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('resize'));
     });
   });
 })();
@@ -314,19 +257,13 @@
 
   const PHYS = { v: 4.11, dt: 0.01, T: 10 };
 
-  const S = {
-    runs: [],
-    current: null,
-    acc: 0,
-    running: false,
-    hover: null,
-  };
+  const S = { runs: [], current: null, acc: 0, running: false, hover: null };
 
   const view = { cx: 0, cy: 0, scale: 50, panX: 0, panY: 0 };
 
   function fitCanvas() {
     const r = canvas.getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) return;   // hidden
+    if (r.width === 0 || r.height === 0) return;
     const dpr = window.devicePixelRatio || 1;
     canvas.width  = Math.max(1, Math.round(r.width  * dpr));
     canvas.height = Math.max(1, Math.round(r.height * dpr));
@@ -357,8 +294,7 @@
   function newRun() {
     const id = S.runs.length + 1;
     S.current = {
-      id,
-      color: COLORS[(id - 1) % COLORS.length],
+      id, color: COLORS[(id - 1) % COLORS.length],
       t: 0, steps: 0, x: 0, y: 0,
       path: [[0, 0]],
       markers: [{ t: 0, x: 0, y: 0 }],
@@ -537,7 +473,6 @@
     return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
   }
 
-  /* ---- Pointer: pan + hover ---- */
   let dragging = false;
   let dragStartX = 0, dragStartY = 0;
   let panStartX = 0, panStartY = 0;
@@ -602,7 +537,6 @@
       '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
   }
 
-  /* ---- Panel wiring ---- */
   document.getElementById('runBtnA').addEventListener('click', () => {
     if (S.running && S.current) { S.running = false; updateRunButton(); }
     else if (S.current && !S.current.done) { S.running = true; updateRunButton(); }
@@ -655,19 +589,15 @@
    PART B · Lattice Random Walk
    ===================================================== */
 (function () {
-  const canvas       = document.getElementById('simCanvasB');
-  const ctx          = canvas.getContext('2d');
-  const summaryTable = document.getElementById('summaryTable');
-  const emptyNote    = document.getElementById('emptyNoteB');
-  const readoutEl    = document.getElementById('readoutB');
+  const canvas    = document.getElementById('simCanvasB');
+  const ctx       = canvas.getContext('2d');
+  const readoutEl = document.getElementById('readoutB');
 
   const S = {
     d: 2,
     N: 1000,
-    animating: false,
-    anim: null,
-    last: null,
-    log: [],
+    anim: null,         // walk currently being animated, or null
+    last: null,         // most recently completed walk (kept on screen)
     stepAcc: 0,
   };
 
@@ -712,12 +642,6 @@
       w.returnSteps.push(w.stepIdx);
     }
     if (w.stepIdx >= w.N) w.done = true;
-  }
-
-  function runToCompletion(d, N) {
-    const w = createWalk(d, N);
-    while (!w.done) advanceWalk(w);
-    return w;
   }
 
   function render() {
@@ -931,26 +855,31 @@
     ctx.fillText('returns: ' + walk.returns, 14, 58);
   }
 
+  /* ---------- Loop: always animate ---------- */
   let lastFrameTime = performance.now();
 
   function loop(now) {
     const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
     lastFrameTime = now;
 
-    if (!document.getElementById('viewB').hidden && S.animating && S.anim && !S.anim.done) {
-      const rate = Math.max(60, S.anim.N / 3);
+    if (!document.getElementById('viewB').hidden && S.anim && !S.anim.done) {
+      // Rate scales with sqrt(N): completion time scales with sqrt(N).
+      const rate = 8 * Math.sqrt(S.anim.N);
       S.stepAcc += dt * rate;
+
       let guard = 0;
-      while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 5000) {
+      while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 50000) {
         advanceWalk(S.anim);
         S.stepAcc -= 1;
       }
+
       if (S.anim && S.anim.done) {
-        S.log.push({ d: S.anim.d, N: S.anim.N, returns: S.anim.returns });
         S.last = S.anim;
         S.anim = null;
-        S.animating = false;
+        S.stepAcc = 0;
         updateUI();
+      } else if (S.anim) {
+        updateReadoutRunning(S.anim);
       }
     }
 
@@ -958,10 +887,10 @@
     requestAnimationFrame(loop);
   }
 
-  /* ---- Panel wiring ---- */
+  /* ---------- Panel wiring ---------- */
   document.querySelectorAll('#panelB .dim-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (S.animating) return;
+      if (S.anim) return;
       document.querySelectorAll('#panelB .dim-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       S.d = parseInt(btn.dataset.d, 10);
@@ -971,84 +900,46 @@
   });
 
   document.getElementById('runBtnB').addEventListener('click', () => {
-    if (S.animating) return;
+    if (S.anim) return;   // already running
     const N = parseInt(document.getElementById('nInput').value, 10);
     if (!N || N < 1) return;
 
-    if (N <= 2000) {
-      S.anim = createWalk(S.d, N);
-      S.animating = true;
-      S.stepAcc = 0;
-      lastFrameTime = performance.now();
-      updateUI();
-    } else {
-      const walk = runToCompletion(S.d, N);
-      S.log.push({ d: walk.d, N: walk.N, returns: walk.returns });
-      S.last = walk;
-      updateUI();
-    }
-  });
-
-  document.getElementById('run10BtnB').addEventListener('click', () => {
-    if (S.animating) return;
-    const N = parseInt(document.getElementById('nInput').value, 10);
-    if (!N || N < 1) return;
-    for (let i = 0; i < 10; i++) {
-      const walk = runToCompletion(S.d, N);
-      S.log.push({ d: walk.d, N: walk.N, returns: walk.returns });
-      S.last = walk;
-    }
+    S.anim = createWalk(S.d, N);
+    S.stepAcc = 0;
+    lastFrameTime = performance.now();
     updateUI();
   });
 
   document.getElementById('clearBtnB').addEventListener('click', () => {
-    if (S.animating) return;
-    S.log = []; S.last = null; S.anim = null;
+    if (S.anim) return;
+    S.last = null;
     updateUI();
   });
 
   document.getElementById('nInput').addEventListener('change', updateUI);
 
   function updateUI() {
-    const disabled = S.animating;
-    document.getElementById('runBtnB').disabled = disabled;
-    document.getElementById('run10BtnB').disabled = disabled;
-    document.getElementById('clearBtnB').disabled = disabled;
-    document.querySelectorAll('#panelB .dim-btn').forEach(b => b.disabled = disabled);
+    const running = !!S.anim;
+    document.getElementById('runBtnB').disabled = running;
+    document.getElementById('clearBtnB').disabled = running;
+    document.querySelectorAll('#panelB .dim-btn').forEach(b => b.disabled = running);
 
-    if (S.anim) {
-      readoutEl.innerHTML = 'Running d=' + S.anim.d + ', N=' + S.anim.N + '\u2026';
+    if (running) {
+      updateReadoutRunning(S.anim);
     } else if (S.last) {
       readoutEl.innerHTML =
-        'Last run: d=' + S.last.d +
-        ', N=' + S.last.N +
+        'Last run: d=' + S.last.d + ', N=' + S.last.N +
         ', returns=<span class="hl">' + S.last.returns + '</span>';
     } else {
       readoutEl.textContent = 'Ready.';
     }
+  }
 
-    const groups = new Map();
-    for (const e of S.log) {
-      const key = e.d + '_' + e.N;
-      if (!groups.has(key)) groups.set(key, { d: e.d, N: e.N, runs: [] });
-      groups.get(key).runs.push(e.returns);
-    }
-    const keys = Array.from(groups.keys()).sort((a, b) => {
-      const ga = groups.get(a), gb = groups.get(b);
-      if (ga.d !== gb.d) return ga.d - gb.d;
-      return ga.N - gb.N;
-    });
-
-    let html = '<tr><th>d</th><th>N</th><th>n</th><th>mean</th></tr>';
-    for (const k of keys) {
-      const g = groups.get(k);
-      const n = g.runs.length;
-      const mean = g.runs.reduce((a, b) => a + b, 0) / n;
-      html += '<tr><td>' + g.d + 'D</td><td>' + g.N + '</td><td>' + n +
-              '</td><td>' + mean.toFixed(3) + '</td></tr>';
-    }
-    summaryTable.innerHTML = html;
-    emptyNote.style.display = keys.length === 0 ? 'block' : 'none';
+  function updateReadoutRunning(w) {
+    readoutEl.innerHTML =
+      'Running d=' + w.d + ', N=' + w.N +
+      ' \u00B7 step ' + w.stepIdx + ' / ' + w.N +
+      ' \u00B7 returns=<span class="hl">' + w.returns + '</span>';
   }
 
   window.addEventListener('resize', fitCanvas);
