@@ -1333,6 +1333,9 @@
 <script>
 /* =====================================================
    2B · Shadow Area (black box)
+   =====================================================
+   Exact y-bounds per x-column, discretised along x.
+   Clips to the [-100, 100]^2 sheet automatically.
    ===================================================== */
 (function () {
   const xInput  = document.getElementById('xInput2B');
@@ -1349,27 +1352,66 @@
   /* ---- Position uncertainty (cm) on the sphere center ---- */
   const POS_NOISE = 0.05;
 
+  /* ---- Ground plane bounds ---- */
+  const HALF = 100;
+  const NX   = 10000;   // x-columns per query
+
   function uniform(min, max) {
     return min + Math.random() * (max - min);
   }
 
-  /* ---- Exact shadow area on z = 0 ----
-     A = pi r^2 sz^2 (D/d) sqrt(d^2 - r^2) / (D^2 - r^2)^{3/2}
-     with D = sz - cz, d^2 = (cx-sx)^2 + (cy-sy)^2 + D^2.
-     Returns 0 in the physically impossible cases (sphere above source). */
+  /* ---- Exact shadow area on z = 0, clipped to the sheet ----
+     For each x-column, the shadow is the y-interval between the
+     two real roots of the tangent-cone equation. Columns whose
+     discriminant is negative (or which fall off the sheet) are
+     skipped. The interval is clipped to [-HALF, HALF] before
+     contributing to the area. */
   function shadowArea(cx, cy, cz) {
-    const D = sz - cz;
+    const wx = cx - sx;
+    const wy = cy - sy;
+    const D  = sz - cz;                    // source-to-sphere z-distance
     if (D <= 0) return 0;
 
-    const a2 = (cx - sx) * (cx - sx) + (cy - sy) * (cy - sy);
-    const d2 = a2 + D * D;
+    const r2 = r * r;
+    const D2 = D * D;
 
-    const D2r2 = D * D - r * r;
-    const d2r2 = d2 - r * r;
-    if (D2r2 <= 0 || d2r2 <= 0) return 0;
+    // Quadratic form coefficients of the shadow ellipse (in shifted
+    // coordinates X = x - sx, Y = y - sy on the plane z = 0):
+    //   Pxx X^2 + Pyy Y^2 + 2 Pxy X Y + Lx X + Ly Y + C0 = 0
+    const Pxx = D2 + wy * wy - r2;
+    const Pyy = D2 + wx * wx - r2;
+    const Pxy = -wx * wy;
+    const Lx  = -2 * sz * D * wx;
+    const Ly  = -2 * sz * D * wy;
+    const C0  = sz * sz * (wx * wx + wy * wy - r2);
 
-    return Math.PI * r * r * sz * sz * (D / Math.sqrt(d2))
-           * Math.sqrt(d2r2) / Math.pow(D2r2, 1.5);
+    if (Pyy <= 0) return 0;                // safety; not reachable in-range
+
+    const dx = (2 * HALF) / NX;
+    const inv2Pyy = 1 / (2 * Pyy);
+
+    let area = 0;
+
+    for (let i = 0; i < NX; i++) {
+      const x = -HALF + (i + 0.5) * dx;
+      const X = x - sx;
+
+      const B1 = 2 * Pxy * X + Ly;
+      const C1 = (Pxx * X + Lx) * X + C0;
+
+      const disc = B1 * B1 - 4 * Pyy * C1;
+      if (disc <= 0) continue;
+
+      const sq = Math.sqrt(disc);
+      let yA = sy + (-B1 - sq) * inv2Pyy;
+      let yB = sy + (-B1 + sq) * inv2Pyy;
+      if (yA > yB) { const t = yA; yA = yB; yB = t; }
+
+      if (yA < -HALF) yA = -HALF;
+      if (yB >  HALF) yB =  HALF;
+      if (yB > yA) area += (yB - yA) * dx;
+    }
+    return area;
   }
 
   /* ---- Input handling (allow negative numbers) ---- */
@@ -1425,11 +1467,11 @@
     const cyA = cy + uniform(-POS_NOISE, POS_NOISE);
     const czA = cz + uniform(-POS_NOISE, POS_NOISE);
 
-    // Stage 2: exact shadow area at the actual position.
+    // Stage 2: exact shadow area at the actual position, clipped to the sheet.
     const A = shadowArea(cxA, cyA, czA);
 
     readout.innerHTML =
-      'Shadow area = <span class="value">' + A.toFixed(1) + '</span> cm²';
+      'Shadow area = <span class="value">' + A.toFixed(2) + '</span> cm²';
   });
 })();
 </script>
