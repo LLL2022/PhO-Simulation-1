@@ -1333,9 +1333,8 @@
 <script>
 /* =====================================================
    2B · Shadow Area (black box)
-   =====================================================
-   Exact y-bounds per x-column, discretised along x.
-   Clips to the [-100, 100]^2 sheet automatically.
+   TEST MODE: computes with both the exact y-bounds method
+   and the lattice sweep, and displays both.
    ===================================================== */
 (function () {
   const xInput  = document.getElementById('xInput2B');
@@ -1354,30 +1353,27 @@
 
   /* ---- Ground plane bounds ---- */
   const HALF = 100;
-  const NX   = 10000;   // x-columns per query
+
+  /* Resolution for the exact method (columns along x) */
+  const NX_EXACT = 10000;
+
+  /* Resolution for the reference lattice sweep (points per side) */
+  const N_LATTICE = 800;
 
   function uniform(min, max) {
     return min + Math.random() * (max - min);
   }
 
-  /* ---- Exact shadow area on z = 0, clipped to the sheet ----
-     For each x-column, the shadow is the y-interval between the
-     two real roots of the tangent-cone equation. Columns whose
-     discriminant is negative (or which fall off the sheet) are
-     skipped. The interval is clipped to [-HALF, HALF] before
-     contributing to the area. */
-  function shadowArea(cx, cy, cz) {
+  /* ============ Method A: exact y-bounds per x-column ============ */
+  function shadowAreaExact(cx, cy, cz) {
     const wx = cx - sx;
     const wy = cy - sy;
-    const D  = sz - cz;                    // source-to-sphere z-distance
+    const D  = sz - cz;
     if (D <= 0) return 0;
 
     const r2 = r * r;
     const D2 = D * D;
 
-    // Quadratic form coefficients of the shadow ellipse (in shifted
-    // coordinates X = x - sx, Y = y - sy on the plane z = 0):
-    //   Pxx X^2 + Pyy Y^2 + 2 Pxy X Y + Lx X + Ly Y + C0 = 0
     const Pxx = D2 + wy * wy - r2;
     const Pyy = D2 + wx * wx - r2;
     const Pxy = -wx * wy;
@@ -1385,14 +1381,14 @@
     const Ly  = -2 * sz * D * wy;
     const C0  = sz * sz * (wx * wx + wy * wy - r2);
 
-    if (Pyy <= 0) return 0;                // safety; not reachable in-range
+    if (Pyy <= 0) return 0;
 
-    const dx = (2 * HALF) / NX;
+    const dx = (2 * HALF) / NX_EXACT;
     const inv2Pyy = 1 / (2 * Pyy);
 
     let area = 0;
 
-    for (let i = 0; i < NX; i++) {
+    for (let i = 0; i < NX_EXACT; i++) {
       const x = -HALF + (i + 0.5) * dx;
       const X = x - sx;
 
@@ -1412,6 +1408,48 @@
       if (yB > yA) area += (yB - yA) * dx;
     }
     return area;
+  }
+
+  /* ============ Method B: full lattice sweep (reference) ============ */
+  /* For each cell center P on z = 0, test whether the segment
+     from the source S to P intersects the sphere. Sum cell areas. */
+  function shadowAreaLattice(cx, cy, cz) {
+    const step = (2 * HALF) / N_LATTICE;
+    const cellArea = step * step;
+
+    const ux = sx - cx;
+    const uy = sy - cy;
+    const uz = sz - cz;
+
+    const c0 = ux*ux + uy*uy + uz*uz - r*r;
+
+    const vz   = -sz;
+    const vzSq = vz * vz;
+    const uzVz = uz * vz;
+
+    let count = 0;
+
+    for (let i = 0; i < N_LATTICE; i++) {
+      const px = -HALF + (i + 0.5) * step;
+      const vxb = px - sx;
+
+      for (let j = 0; j < N_LATTICE; j++) {
+        const py = -HALF + (j + 0.5) * step;
+        const vyb = py - sy;
+
+        const a = vxb*vxb + vyb*vyb + vzSq;
+        const b = 2 * (ux*vxb + uy*vyb + uzVz);
+
+        const tStar = -b / (2 * a);
+        let fMin;
+        if (tStar <= 0)      fMin = c0;
+        else if (tStar >= 1) fMin = a + b + c0;
+        else                 fMin = c0 - (b*b) / (4 * a);
+
+        if (fMin < 0) count++;
+      }
+    }
+    return count * cellArea;
   }
 
   /* ---- Input handling (allow negative numbers) ---- */
@@ -1467,11 +1505,28 @@
     const cyA = cy + uniform(-POS_NOISE, POS_NOISE);
     const czA = cz + uniform(-POS_NOISE, POS_NOISE);
 
-    // Stage 2: exact shadow area at the actual position, clipped to the sheet.
-    const A = shadowArea(cxA, cyA, czA);
+    // Compute with both methods on the same actual position.
+    const tExact0 = performance.now();
+    const AExact = shadowAreaExact(cxA, cyA, czA);
+    const tExact1 = performance.now();
+
+    const tLat0 = performance.now();
+    const ALattice = shadowAreaLattice(cxA, cyA, czA);
+    const tLat1 = performance.now();
+
+    const diff = AExact - ALattice;
+    const relPct = AExact > 0 ? (diff / AExact) * 100 : 0;
 
     readout.innerHTML =
-      'Shadow area = <span class="value">' + A.toFixed(2) + '</span> cm²';
+      'Exact   (NX=' + NX_EXACT + '): <span class="value">' +
+        AExact.toFixed(2) + '</span> cm²' +
+        ' <span style="color:#8b93a1;font-size:.8em;">(' +
+        (tExact1 - tExact0).toFixed(1) + ' ms)</span><br>' +
+      'Lattice (N=' + N_LATTICE + '):  <span class="value">' +
+        ALattice.toFixed(2) + '</span> cm²' +
+        ' <span style="color:#8b93a1;font-size:.8em;">(' +
+        (tLat1 - tLat0).toFixed(0) + ' ms)</span><br>' +
+      'Δ = ' + diff.toFixed(2) + ' cm² (' + relPct.toFixed(3) + ' %)';
   });
 })();
 </script>
