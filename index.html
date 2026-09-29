@@ -159,6 +159,7 @@
     outline: none;
   }
   .panel input[type="text"]:focus { border-color: #3b6ea5; }
+  .panel input[type="text"]:disabled { opacity: 0.5; }
 
   main.simple-view {
     display: flex;
@@ -258,12 +259,11 @@
     <button class="part-tab active" data-part="1A">1A · 2D Random Walk</button>
     <button class="part-tab" data-part="1B">1B · Lattice Walk</button>
     <button class="part-tab" data-part="1C">1C · Self-Avoiding Walk</button>
-    <button class="part-tab soon" disabled>1D</button>
+    <button class="part-tab" data-part="1D">1D · Starving Walk</button>
     <span class="divider"></span>
     <button class="part-tab" data-part="2A">2A · Shadow Length</button>
     <button class="part-tab" data-part="2B">2B · Shadow Area</button>
     <button class="part-tab" data-part="2C">2C · Cube Shadow</button>
-    <button class="part-tab soon" disabled>2D</button>
   </nav>
 </header>
 
@@ -324,6 +324,29 @@
       <button id="clearBtnC">Clear</button>
     </div>
     <div class="readout" id="readoutC">Ready.</div>
+  </aside>
+</main>
+
+<!-- ============================ 1D ============================ -->
+<main id="view1D" hidden>
+  <section class="canvas-wrap">
+    <canvas id="simCanvas1D"></canvas>
+  </section>
+  <aside class="panel" id="panel1D">
+    <label for="sInput1D">Capacity S</label>
+    <input id="sInput1D" type="text" inputmode="numeric" autocomplete="off"
+           spellcheck="false" value="100">
+
+    <label for="pInput1D">Food density p</label>
+    <input id="pInput1D" type="text" inputmode="decimal" autocomplete="off"
+           spellcheck="false" value="0.1">
+
+    <div class="control-row">
+      <button id="runBtn1D" class="primary">Run</button>
+      <button id="clearBtn1D">Clear</button>
+    </div>
+
+    <div class="readout" id="readout1D">Ready.</div>
   </aside>
 </main>
 
@@ -389,6 +412,7 @@
     '1A': document.getElementById('viewA'),
     '1B': document.getElementById('viewB'),
     '1C': document.getElementById('viewC'),
+    '1D': document.getElementById('view1D'),
     '2A': document.getElementById('view2A'),
     '2B': document.getElementById('view2B'),
     '2C': document.getElementById('view2C'),
@@ -1262,6 +1286,386 @@
 
 <script>
 /* =====================================================
+   1D · 1D Starving Random Walk
+   ===================================================== */
+(function () {
+  const canvas    = document.getElementById('simCanvas1D');
+  const ctx       = canvas.getContext('2d');
+  const readoutEl = document.getElementById('readout1D');
+
+  const MAX_S = 10000;
+  const RATE_FLOOR = 30;
+  const RATE_CEIL  = 5000;
+
+  const S = {
+    capacity: 100,
+    density: 0.1,
+    anim: null,
+    last: null,
+    stepAcc: 0,
+    inputValid: true,
+  };
+
+  function syncCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    if (cw === 0 || ch === 0) return false;
+    const tw = Math.round(cw * dpr), th = Math.round(ch * dpr);
+    if (canvas.width !== tw || canvas.height !== th) {
+      canvas.width = tw; canvas.height = th;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    return true;
+  }
+
+  function hashInt(x) {
+    let h = Math.imul(x, 2654435761);
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x45d9f3b);
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x45d9f3b);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+  function hasFood(pos, p) {
+    return hashInt(pos) < p;
+  }
+
+  function createWalker(capacity, density) {
+    return {
+      S: capacity,
+      p: density,
+      pos: 0,
+      capacity: capacity,
+      stepCount: 0,
+      alive: true,
+      path: [0],
+      eaten: new Set([0]),
+      meals: [],
+    };
+  }
+
+  function advanceWalker(w) {
+    if (!w.alive) return;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    w.pos += dir;
+    w.stepCount++;
+
+    if (hasFood(w.pos, w.p) && !w.eaten.has(w.pos)) {
+      w.eaten.add(w.pos);
+      w.capacity = w.S;
+      w.meals.push(w.stepCount);
+    } else {
+      w.capacity--;
+    }
+
+    w.path.push(w.pos);
+
+    if (w.capacity <= 0) {
+      w.alive = false;
+    }
+  }
+
+  function parseIntInRange(raw, min, max) {
+    const s = String(raw).trim();
+    if (!/^[0-9]+$/.test(s)) return null;
+    const n = parseInt(s, 10);
+    if (!Number.isFinite(n)) return null;
+    if (n < min || n > max) return null;
+    return n;
+  }
+  function parseFloatInRange(raw, min, max) {
+    const s = String(raw).trim();
+    if (!/^\d*\.?\d*$/.test(s) || s === '' || s === '.') return null;
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    if (n < min || n > max) return null;
+    return n;
+  }
+
+  const sInputEl = document.getElementById('sInput1D');
+  const pInputEl = document.getElementById('pInput1D');
+
+  sInputEl.addEventListener('input', () => {
+    const cleaned = sInputEl.value.replace(/[^0-9]/g, '');
+    if (cleaned !== sInputEl.value) sInputEl.value = cleaned;
+    applyValidation();
+  });
+  sInputEl.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
+  });
+
+  pInputEl.addEventListener('input', () => {
+    let s = pInputEl.value.replace(/[^0-9.]/g, '');
+    const dot = s.indexOf('.');
+    if (dot !== -1) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '');
+    if (s !== pInputEl.value) pInputEl.value = s;
+    applyValidation();
+  });
+  pInputEl.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !/[0-9.]/.test(e.key)) e.preventDefault();
+  });
+
+  function applyValidation() {
+    const cap = parseIntInRange(sInputEl.value, 1, MAX_S);
+    const den = parseFloatInRange(pInputEl.value, 0.001, 1);
+
+    S.inputValid = (cap !== null && den !== null);
+    if (cap !== null) S.capacity = cap;
+    if (den !== null) S.density = den;
+
+    const runBtn = document.getElementById('runBtn1D');
+    if (!S.anim) runBtn.disabled = !S.inputValid;
+
+    if (!S.inputValid) {
+      readoutEl.innerHTML = '<span class="err">S must be a positive integer \u2264 ' +
+        MAX_S + '; p must be in [0.001, 1].</span>';
+    } else if (!S.anim) {
+      if (S.last) {
+        readoutEl.innerHTML = lastRunReadout(S.last);
+      } else {
+        readoutEl.textContent = 'Ready.';
+      }
+    }
+  }
+
+  function lastRunReadout(w) {
+    const status = w.alive ? 'running' : 'starved';
+    return 'S = ' + w.S + ' \u00B7 p = ' + w.p +
+      ' \u00B7 steps = <span class="hl">' + w.stepCount + '</span>' +
+      ' \u00B7 ' + status;
+  }
+
+  function render() {
+    if (document.getElementById('view1D').hidden) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const walker = S.anim || S.last;
+    if (!walker) {
+      ctx.fillStyle = 'rgba(200,207,218,0.4)';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Press Run to begin.', w / 2, h / 2);
+      return;
+    }
+
+    renderWalker(walker, w, h);
+    drawOverlay(walker);
+  }
+
+  function renderWalker(walker, w, h) {
+    const padL = 70, padR = 30, padT = 30, padB = 40;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+    if (plotW <= 0 || plotH <= 0) return;
+
+    const stepMax = Math.max(20, walker.stepCount);
+
+    let posMin = 0, posMax = 0;
+    for (const p of walker.path) {
+      if (p < posMin) posMin = p;
+      if (p > posMax) posMax = p;
+    }
+    if (posMax - posMin < 6) {
+      const c = (posMin + posMax) / 2;
+      posMin = c - 3;
+      posMax = c + 3;
+    }
+    const margin = (posMax - posMin) * 0.08;
+    posMin -= margin;
+    posMax += margin;
+
+    const mapX = (step) => padL + (step / stepMax) * plotW;
+    const mapY = (pos) => padT + plotH - ((pos - posMin) / (posMax - posMin)) * plotH;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const stepTick = niceSpacing(stepMax);
+    for (let st = 0; st <= stepMax + 1e-9; st += stepTick) {
+      const x = mapX(st);
+      ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH);
+    }
+    const posTick = niceSpacing(posMax - posMin);
+    const posStart = Math.ceil(posMin / posTick) * posTick;
+    for (let p = posStart; p <= posMax + 1e-9; p += posTick) {
+      const y = mapY(p);
+      ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(200,207,218,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, padT + plotH);
+    ctx.lineTo(padL + plotW, padT + plotH);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(200,207,218,0.55)';
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    for (let st = 0; st <= stepMax + 1e-9; st += stepTick) {
+      ctx.fillText(st.toString(), mapX(st), padT + plotH + 16);
+    }
+    ctx.textAlign = 'right';
+    const posEnd = Math.floor(posMax / posTick) * posTick;
+    for (let p = posStart; p <= posEnd + 1e-9; p += posTick) {
+      ctx.fillText(p.toString(), padL - 6, mapY(p) + 4);
+    }
+
+    const posMinI = Math.floor(posMin);
+    const posMaxI = Math.ceil(posMax);
+    ctx.fillStyle = 'rgba(110,200,110,0.85)';
+    for (let p = posMinI; p <= posMaxI; p++) {
+      if (hasFood(p, walker.p)) {
+        const y = mapY(p);
+        ctx.fillRect(padL - 4, y - 1, 6, 2);
+      }
+    }
+
+    if (walker.path.length >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(mapX(0), mapY(walker.path[0]));
+      for (let i = 1; i < walker.path.length; i++) {
+        ctx.lineTo(mapX(i), mapY(walker.path[i]));
+      }
+      ctx.strokeStyle = 'rgba(110,168,254,0.75)';
+      ctx.lineWidth = 1.2;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+
+    for (const step of walker.meals) {
+      const x = mapX(step);
+      const y = mapY(walker.path[step]);
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#6ec96e';
+      ctx.fill();
+    }
+
+    const last = walker.path[walker.path.length - 1];
+    const xLast = mapX(walker.stepCount);
+    const yLast = mapY(last);
+
+    if (walker.alive) {
+      ctx.beginPath();
+      ctx.arc(xLast, yLast, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(xLast - 5, yLast - 5); ctx.lineTo(xLast + 5, yLast + 5);
+      ctx.moveTo(xLast + 5, yLast - 5); ctx.lineTo(xLast - 5, yLast + 5);
+      ctx.strokeStyle = '#e88b8b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  function niceSpacing(range) {
+    const candidates = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+    for (const c of candidates) if (range / c < 10) return c;
+    return 10000;
+  }
+
+  function drawOverlay(walker) {
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(200,207,218,0.75)';
+    ctx.fillText('S = ' + walker.S + '   p = ' + walker.p, 14, 22);
+    ctx.fillText('step ' + walker.stepCount, 14, 40);
+    ctx.fillStyle = walker.alive ? 'rgba(110,200,110,0.95)' : 'rgba(232,139,139,0.95)';
+    ctx.fillText('capacity: ' + Math.max(0, walker.capacity), 14, 58);
+  }
+
+  let lastFrameTime = performance.now();
+
+  function loop(now) {
+    const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+    lastFrameTime = now;
+    syncCanvas();
+
+    if (!document.getElementById('view1D').hidden && S.anim && S.anim.alive) {
+      const w = S.anim;
+      const rate = Math.min(RATE_CEIL, Math.max(RATE_FLOOR, w.S * 1.5));
+      S.stepAcc += dt * rate;
+
+      let guard = 0;
+      while (S.stepAcc >= 1 && S.anim && S.anim.alive && guard++ < 100000) {
+        advanceWalker(S.anim);
+        S.stepAcc -= 1;
+      }
+
+      if (S.anim && !S.anim.alive) {
+        S.last = S.anim;
+        S.anim = null;
+        S.stepAcc = 0;
+        updateUI();
+      } else if (S.anim) {
+        updateReadoutRunning(S.anim);
+      }
+    }
+
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  document.getElementById('runBtn1D').addEventListener('click', () => {
+    if (S.anim) return;
+    if (!S.inputValid) return;
+    S.anim = createWalker(S.capacity, S.density);
+    S.stepAcc = 0;
+    lastFrameTime = performance.now();
+    updateUI();
+  });
+
+  document.getElementById('clearBtn1D').addEventListener('click', () => {
+    if (S.anim) return;
+    S.last = null;
+    updateUI();
+  });
+
+  function updateUI() {
+    const running = !!(S.anim && S.anim.alive);
+    document.getElementById('runBtn1D').disabled = running || !S.inputValid;
+    document.getElementById('clearBtn1D').disabled = running;
+    sInputEl.disabled = running;
+    pInputEl.disabled = running;
+
+    if (running) {
+      updateReadoutRunning(S.anim);
+    } else if (!S.inputValid) {
+      readoutEl.innerHTML = '<span class="err">S must be a positive integer \u2264 ' +
+        MAX_S + '; p must be in [0.001, 1].</span>';
+    } else if (S.last) {
+      readoutEl.innerHTML = lastRunReadout(S.last);
+    } else {
+      readoutEl.textContent = 'Ready.';
+    }
+  }
+
+  function updateReadoutRunning(w) {
+    readoutEl.innerHTML = 'Running S=' + w.S + ', p=' + w.p +
+      ' \u00B7 step ' + w.stepCount +
+      ' \u00B7 capacity ' + Math.max(0, w.capacity);
+  }
+
+  window.addEventListener('resize', syncCanvas);
+  syncCanvas();
+  applyValidation();
+  updateUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<script>
+/* =====================================================
    2A · Shadow Length (with two-stage uncertainty)
    ===================================================== */
 (function () {
@@ -1348,9 +1752,6 @@
 <script>
 /* =====================================================
    2B · Shadow Area (black box)
-   =====================================================
-   Exact y-bounds per x-column, discretised along x.
-   Clips to the [-100, 100]^2 sheet automatically.
    ===================================================== */
 (function () {
   const xInput  = document.getElementById('xInput2B');
@@ -1358,16 +1759,13 @@
   const zInput  = document.getElementById('zInput2B');
   const readout = document.getElementById('readout2B');
 
-  /* ---- Hidden truth (never shown to student) ---- */
   const sx = 32;
   const sy = 41;
   const sz = 139;
   const r  = 17;
 
-  /* ---- Position uncertainty (cm) on the sphere center ---- */
   const POS_NOISE = 0.05;
 
-  /* ---- Ground plane bounds ---- */
   const HALF = 100;
   const NX   = 10000;
 
@@ -1481,25 +1879,12 @@
 <script>
 /* =====================================================
    2C · Cube Shadow (black box)
-   =====================================================
-   Parallel light along -z. Cube at origin in a uniformly
-   random orientation. Shadow area on z = 0 is reported.
-   For a = 12.7, the theoretical mean is 3a²/2 = 241.935 cm².
    ===================================================== */
 (function () {
   const readout = document.getElementById('readout2C');
 
-  /* ---- Hidden truth (never shown to student) ---- */
-  const a = 12.7;   // cube side length in cm
+  const a = 12.7;
 
-  /* ---- Sample shadow area for a uniform random orientation ----
-     The shadow area depends only on the direction cosines of the
-     cube's three body axes with respect to the light direction.
-     Sampling a uniformly random unit vector (x, y, z) on S² is
-     equivalent to sampling the third row of a uniform random
-     rotation matrix, so:
-         A = a² · ( |x| + |y| + |z| )
-  */
   function sampleArea() {
     const z = 2 * Math.random() - 1;
     const phi = 2 * Math.PI * Math.random();
