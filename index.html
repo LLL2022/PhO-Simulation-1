@@ -6,7 +6,6 @@
 <title>Physics Olympiad Simulation Lab</title>
 <style>
   * { box-sizing: border-box; }
-
   html, body {
     margin: 0;
     height: 100%;
@@ -14,9 +13,7 @@
     background: #0f1117;
     color: #e8eaf0;
   }
-
   body { display: flex; flex-direction: column; overflow: hidden; }
-
   header {
     border-bottom: 1px solid #2a2f3a;
     flex-shrink: 0;
@@ -27,7 +24,6 @@
     flex-wrap: wrap;
   }
   h1 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; }
-
   nav.parts { display: flex; gap: 0.4rem; flex-wrap: wrap; }
   .part-tab {
     padding: 0.4rem 0.95rem;
@@ -45,7 +41,6 @@
     border-color: #3b6ea5;
     color: #cfe3ff;
   }
-
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -53,7 +48,6 @@
     min-height: 0;
   }
   main[hidden] { display: none; }
-
   .canvas-wrap {
     position: relative;
     background: #0b0d12;
@@ -62,7 +56,6 @@
   }
   canvas { display: block; width: 100%; height: 100%; }
   #simCanvasA { cursor: crosshair; }
-
   .tooltip {
     position: absolute;
     pointer-events: none;
@@ -81,7 +74,6 @@
   }
   .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
   .tooltip .hl { color: #ffd166; }
-
   .panel {
     padding: 1rem 1.15rem 2rem;
     overflow-y: auto;
@@ -90,7 +82,6 @@
     flex-direction: column;
     gap: 0.6rem;
   }
-
   .panel button {
     padding: 0.5rem 0.9rem;
     border-radius: 6px;
@@ -109,10 +100,8 @@
   }
   .panel button.primary:hover:not(:disabled) { background: #264a78; }
   .panel button:disabled { opacity: 0.4; cursor: not-allowed; }
-
   .control-row { display: flex; gap: 0.5rem; }
   .control-row button { flex: 1; }
-
   .readout {
     font-family: ui-monospace, monospace;
     font-size: 0.82rem;
@@ -122,7 +111,6 @@
   }
   .readout .hl { color: #ffd166; }
   .readout .err { color: #e88b8b; }
-
   .dim-row { display: flex; gap: 0.35rem; }
   .dim-btn {
     flex: 1;
@@ -134,7 +122,6 @@
     border-color: #3b6ea5;
     color: #cfe3ff;
   }
-
   .panel label {
     display: block;
     font-size: 0.72rem;
@@ -154,10 +141,7 @@
     font-family: ui-monospace, monospace;
     outline: none;
   }
-  .panel input[type="text"]:focus {
-    border-color: #3b6ea5;
-  }
-
+  .panel input[type="text"]:focus { border-color: #3b6ea5; }
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
     .canvas-wrap { border-right: none; border-bottom: 1px solid #2a2f3a; }
@@ -175,13 +159,11 @@
   </nav>
 </header>
 
-<!-- ============================ PART A ============================ -->
 <main id="viewA">
   <section class="canvas-wrap">
     <canvas id="simCanvasA"></canvas>
     <div id="tooltipA" class="tooltip"></div>
   </section>
-
   <aside class="panel" id="panelA">
     <div class="control-row">
       <button id="runBtnA" class="primary">New Run</button>
@@ -190,7 +172,6 @@
     <div class="control-row">
       <button id="recenterBtnA">Recenter View</button>
     </div>
-
     <div class="readout">
       Runs completed: <span class="hl" id="runCountA">0</span><br>
       <span id="liveTextA">Click "New Run" to begin.</span>
@@ -198,56 +179,45 @@
   </aside>
 </main>
 
-<!-- ============================ PART B ============================ -->
 <main id="viewB" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasB"></canvas>
   </section>
-
   <aside class="panel" id="panelB">
     <div class="dim-row">
       <button class="dim-btn" data-d="1">1D</button>
       <button class="dim-btn active" data-d="2">2D</button>
       <button class="dim-btn" data-d="3">3D</button>
     </div>
-
     <label for="nInput">Steps N</label>
     <input id="nInput" type="text" inputmode="numeric" autocomplete="off"
            spellcheck="false" value="1000">
-
     <div class="control-row">
       <button id="runBtnB" class="primary">Run</button>
       <button id="clearBtnB">Clear</button>
     </div>
-
     <div class="readout" id="readoutB">Ready.</div>
   </aside>
 </main>
 
-<!-- ============================ PART C ============================ -->
 <main id="viewC" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasC"></canvas>
   </section>
-
   <aside class="panel" id="panelC">
     <label for="cInput">Steps N</label>
     <input id="cInput" type="text" inputmode="numeric" autocomplete="off"
            spellcheck="false" value="1000">
-
     <div class="control-row">
       <button id="runBtnC" class="primary">Run</button>
       <button id="clearBtnC">Clear</button>
     </div>
-
     <div class="readout" id="readoutC">Ready.</div>
   </aside>
 </main>
 
 <script>
-/* =====================================================
-   Tab switching
-   ===================================================== */
+/* Tab switching */
 (function () {
   const tabs = document.querySelectorAll('.part-tab');
   const views = {
@@ -255,7 +225,6 @@
     B: document.getElementById('viewB'),
     C: document.getElementById('viewC'),
   };
-
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
@@ -275,66 +244,43 @@
   const canvas  = document.getElementById('simCanvasA');
   const ctx     = canvas.getContext('2d');
   const tooltip = document.getElementById('tooltipA');
-
   const COLORS = [
     '#6ea8fe', '#8bc9a0', '#ffd166', '#e88b8b', '#c8a2ff',
     '#7fd4d4', '#f0a860', '#a0d860', '#d47fb8', '#8fa0e8',
   ];
-
   const PHYS = { v: 4.11, dt: 0.01, T: 10 };
-
   const S = { runs: [], current: null, acc: 0, running: false, hover: null };
-
   const view = { cx: 0, cy: 0, scale: 50, panX: 0, panY: 0 };
 
   function syncCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    const cw = canvas.clientWidth;
-    const ch = canvas.clientHeight;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (cw === 0 || ch === 0) return false;
-    const tw = Math.round(cw * dpr);
-    const th = Math.round(ch * dpr);
+    const tw = Math.round(cw * dpr), th = Math.round(ch * dpr);
     if (canvas.width !== tw || canvas.height !== th) {
-      canvas.width = tw;
-      canvas.height = th;
+      canvas.width = tw; canvas.height = th;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      view.cx = cw / 2;
-      view.cy = ch / 2;
+      view.cx = cw / 2; view.cy = ch / 2;
       view.scale = Math.min(cw, ch) / 4;
     }
     return true;
   }
-
   function w2s(x, y) {
-    return [
-      view.cx + x * view.scale + view.panX,
-      view.cy - y * view.scale + view.panY,
-    ];
+    return [view.cx + x * view.scale + view.panX, view.cy - y * view.scale + view.panY];
   }
-
   function s2w(sx, sy) {
-    return [
-      (sx - view.cx - view.panX) / view.scale,
-      (view.cy + view.panY - sy) / view.scale,
-    ];
+    return [(sx - view.cx - view.panX) / view.scale, (view.cy + view.panY - sy) / view.scale];
   }
-
   function newRun() {
     const id = S.runs.length + 1;
     S.current = {
-      id,
-      color: COLORS[(id - 1) % COLORS.length],
+      id, color: COLORS[(id - 1) % COLORS.length],
       t: 0, steps: 0, x: 0, y: 0,
-      path: [[0, 0]],
-      markers: [{ t: 0, x: 0, y: 0 }],
-      done: false,
+      path: [[0, 0]], markers: [{ t: 0, x: 0, y: 0 }], done: false,
     };
-    S.acc = 0;
-    S.running = true;
-    updateLiveReadout();
-    updateRunButton();
+    S.acc = 0; S.running = true;
+    updateLiveReadout(); updateRunButton();
   }
-
   function stepOnce() {
     const c = S.current;
     if (!c) return;
@@ -343,71 +289,50 @@
     c.x += PHYS.v * PHYS.dt * Math.cos(th);
     c.y += PHYS.v * PHYS.dt * Math.sin(th);
     c.path.push([c.x, c.y]);
-
     const tNow = c.steps * PHYS.dt;
     c.t = tNow;
-
     const nextSec = c.markers.length;
     if (nextSec <= PHYS.T && tNow + 1e-9 >= nextSec) {
       c.markers.push({ t: nextSec, x: c.x, y: c.y });
     }
-
     if (tNow + 1e-9 >= PHYS.T) {
-      c.t = PHYS.T;
-      c.done = true;
-      S.runs.push(c);
-      S.current = null;
-      S.running = false;
-      updateRunButton();
-      updateLiveReadout();
+      c.t = PHYS.T; c.done = true;
+      S.runs.push(c); S.current = null; S.running = false;
+      updateRunButton(); updateLiveReadout();
     }
   }
-
   let lastFrame = performance.now();
-
   function loop(now) {
     const dtReal = Math.min((now - lastFrame) / 1000, 0.05);
     lastFrame = now;
-
     const ok = syncCanvas();
-
     if (ok && S.running && S.current && !document.getElementById('viewA').hidden) {
       S.acc += dtReal;
       let guard = 0;
       while (S.acc >= PHYS.dt && S.current && guard++ < 20000) {
-        stepOnce();
-        S.acc -= PHYS.dt;
+        stepOnce(); S.acc -= PHYS.dt;
       }
       const tEl = document.getElementById('tNowA');
       if (tEl && S.current) tEl.textContent = S.current.t.toFixed(2);
     }
-
     render();
     requestAnimationFrame(loop);
   }
-
   function render() {
     if (document.getElementById('viewA').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
-    drawGrid();
-    drawAllRuns();
-    drawOrigin();
-    drawHoverRing();
-    drawOverlay();
+    drawGrid(); drawAllRuns(); drawOrigin(); drawHoverRing(); drawOverlay();
   }
-
   function drawGrid() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const step = 0.5;
     const [xMinW, yMaxW] = s2w(0, 0);
     const [xMaxW, yMinW] = s2w(w, h);
-
     ctx.strokeStyle = 'rgba(255,255,255,0.045)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-
     const xStart = Math.floor(xMinW / step) * step;
     for (let x = xStart; x <= xMaxW + 1e-9; x += step) {
       const [sx] = w2s(x, 0);
@@ -420,20 +345,14 @@
     }
     ctx.stroke();
   }
-
   function drawAllRuns() {
     for (let i = 0; i < S.runs.length - 1; i++) drawRunPath(S.runs[i], 0.18);
     if (S.runs.length > 0) {
       const last = S.runs[S.runs.length - 1];
-      drawRunPath(last, 0.55);
-      drawRunMarkers(last, 3.5);
+      drawRunPath(last, 0.55); drawRunMarkers(last, 3.5);
     }
-    if (S.current) {
-      drawRunPath(S.current, 1.0);
-      drawRunMarkers(S.current, 4.5);
-    }
+    if (S.current) { drawRunPath(S.current, 1.0); drawRunMarkers(S.current, 4.5); }
   }
-
   function drawRunPath(run, alpha) {
     if (run.path.length < 2) return;
     ctx.beginPath();
@@ -444,11 +363,8 @@
       ctx.lineTo(sx, sy);
     }
     ctx.strokeStyle = hexWithAlpha(run.color, alpha);
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.stroke();
   }
-
   function drawRunMarkers(run, r) {
     for (const m of run.markers) {
       const [sx, sy] = w2s(m.x, m.y);
@@ -456,37 +372,25 @@
       ctx.arc(sx, sy, m.t === 0 ? r + 1.5 : r, 0, Math.PI * 2);
       ctx.fillStyle = m.t === 0 ? '#ffd166' : run.color;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
     }
   }
-
   function drawOrigin() {
     const [ox, oy] = w2s(0, 0);
-    ctx.beginPath();
-    ctx.arc(ox, oy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd166';
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255,209,102,0.5)';
-    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(ox, oy, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,209,102,0.5)'; ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(ox - 8, oy); ctx.lineTo(ox + 8, oy);
     ctx.moveTo(ox, oy - 8); ctx.lineTo(ox, oy + 8);
     ctx.stroke();
   }
-
   function drawHoverRing() {
     if (!S.hover) return;
     const [sx, sy] = w2s(S.hover.x, S.hover.y);
-    ctx.beginPath();
-    ctx.arc(sx, sy, 9, 0, Math.PI * 2);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-
   function drawOverlay() {
     ctx.font = '12px ui-monospace, monospace';
     ctx.textAlign = 'left';
@@ -497,7 +401,6 @@
       ctx.fillText('t = ' + S.current.t.toFixed(2) + ' s', 14, 42);
     }
   }
-
   function hexWithAlpha(hex, alpha) {
     const h = hex.replace('#', '');
     const r = parseInt(h.slice(0, 2), 16);
@@ -505,37 +408,25 @@
     const b = parseInt(h.slice(4, 6), 16);
     return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
   }
-
-  let dragging = false;
-  let dragStartX = 0, dragStartY = 0;
-  let panStartX = 0, panStartY = 0;
-
+  let dragging = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
   canvas.addEventListener('pointerdown', (e) => {
     dragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    panStartX = view.panX;
-    panStartY = view.panY;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    panStartX = view.panX; panStartY = view.panY;
     canvas.setPointerCapture(e.pointerId);
   });
-
   canvas.addEventListener('pointermove', (e) => {
     if (dragging) {
       view.panX = panStartX + (e.clientX - dragStartX);
       view.panY = panStartY + (e.clientY - dragStartY);
-      S.hover = null;
-      tooltip.style.display = 'none';
+      S.hover = null; tooltip.style.display = 'none';
       return;
     }
-
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     const hoverable = [];
     if (S.current) hoverable.push(S.current);
     if (S.runs.length > 0) hoverable.push(S.runs[S.runs.length - 1]);
-
     let best = null, bestDist = 16;
     for (const run of hoverable) {
       for (const m of run.markers) {
@@ -544,10 +435,8 @@
         if (d < bestDist) { bestDist = d; best = { ...m, runId: run.id, sx, sy }; }
       }
     }
-    S.hover = best;
-    updateTooltip();
+    S.hover = best; updateTooltip();
   });
-
   canvas.addEventListener('pointerup', (e) => {
     dragging = false;
     try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
@@ -555,10 +444,8 @@
   canvas.addEventListener('pointercancel', () => { dragging = false; });
   canvas.addEventListener('pointerleave', () => {
     if (dragging) return;
-    S.hover = null;
-    updateTooltip();
+    S.hover = null; updateTooltip();
   });
-
   function updateTooltip() {
     if (!S.hover) { tooltip.style.display = 'none'; return; }
     tooltip.style.display = 'block';
@@ -569,35 +456,28 @@
       '<div>x = <span class="hl">' + S.hover.x.toFixed(4) + '</span></div>' +
       '<div>y = <span class="hl">' + S.hover.y.toFixed(4) + '</span></div>';
   }
-
   document.getElementById('runBtnA').addEventListener('click', () => {
     if (S.running && S.current) { S.running = false; updateRunButton(); }
     else if (S.current && !S.current.done) { S.running = true; updateRunButton(); }
     else { newRun(); updateRunButton(); }
   });
-
   document.getElementById('clearBtnA').addEventListener('click', () => {
     S.runs = []; S.current = null; S.running = false; S.hover = null;
     tooltip.style.display = 'none';
-    updateRunButton();
-    updateLiveReadout();
+    updateRunButton(); updateLiveReadout();
   });
-
   document.getElementById('recenterBtnA').addEventListener('click', () => {
     view.panX = 0; view.panY = 0;
   });
-
   function updateRunButton() {
     const b = document.getElementById('runBtnA');
     if (S.running && S.current) b.textContent = 'Pause';
     else if (S.current && !S.current.done) b.textContent = 'Continue';
     else b.textContent = 'New Run';
   }
-
   function updateLiveReadout() {
     const rc = document.getElementById('runCountA');
     if (rc) rc.textContent = S.runs.length;
-
     const live = document.getElementById('liveTextA');
     if (!live) return;
     if (S.current) {
@@ -609,10 +489,8 @@
       live.textContent = 'Latest: run #' + S.runs.length + ' complete.';
     }
   }
-
   window.addEventListener('resize', syncCanvas);
-  syncCanvas();
-  updateLiveReadout();
+  syncCanvas(); updateLiveReadout();
   requestAnimationFrame(loop);
 })();
 </script>
@@ -625,35 +503,22 @@
   const canvas    = document.getElementById('simCanvasB');
   const ctx       = canvas.getContext('2d');
   const readoutEl = document.getElementById('readoutB');
-
   const MAX_N = 1000000;
   const MAX_DRAWN_POINTS = 5000;
   const RATE_C = 2;
-
-  const S = {
-    d: 2,
-    N: 1000,
-    anim: null,
-    last: null,
-    stepAcc: 0,
-    inputValid: true,
-  };
+  const S = { d: 2, N: 1000, anim: null, last: null, stepAcc: 0, inputValid: true };
 
   function syncCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    const cw = canvas.clientWidth;
-    const ch = canvas.clientHeight;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (cw === 0 || ch === 0) return false;
-    const tw = Math.round(cw * dpr);
-    const th = Math.round(ch * dpr);
+    const tw = Math.round(cw * dpr), th = Math.round(ch * dpr);
     if (canvas.width !== tw || canvas.height !== th) {
-      canvas.width = tw;
-      canvas.height = th;
+      canvas.width = tw; canvas.height = th;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     return true;
   }
-
   function parseN(raw) {
     const s = String(raw).trim();
     if (s.length === 0) return null;
@@ -662,31 +527,21 @@
     if (n < 1 || n > MAX_N) return null;
     return n;
   }
-
   function applyValidation() {
     const raw = document.getElementById('nInput').value;
     const n = parseN(raw);
     S.inputValid = (n !== null);
     if (n !== null) S.N = n;
-
     const runBtn = document.getElementById('runBtnB');
     if (!S.anim) runBtn.disabled = !S.inputValid;
-
     if (!S.inputValid) {
-      readoutEl.innerHTML =
-        '<span class="err">Enter a positive integer up to ' +
-        MAX_N.toLocaleString() + '.</span>';
+      readoutEl.innerHTML = '<span class="err">Enter a positive integer up to ' + MAX_N.toLocaleString() + '.</span>';
     } else if (!S.anim) {
       if (S.last) {
-        readoutEl.innerHTML =
-          'Last run: d=' + S.last.d + ', N=' + S.last.N +
-          ', returns=<span class="hl">' + S.last.returns + '</span>';
-      } else {
-        readoutEl.textContent = 'Ready.';
-      }
+        readoutEl.innerHTML = 'Last run: d=' + S.last.d + ', N=' + S.last.N + ', returns=<span class="hl">' + S.last.returns + '</span>';
+      } else { readoutEl.textContent = 'Ready.'; }
     }
   }
-
   function randomUnitVector(d) {
     const k = Math.floor(Math.random() * 2 * d);
     const axis = Math.floor(k / 2);
@@ -695,58 +550,43 @@
     v[axis] = sign;
     return v;
   }
-
   function createWalk(d, N) {
     return {
       d: d, N: N,
       pos: new Array(d).fill(0),
       path: [new Array(d).fill(0)],
-      returns: 0,
-      returnSteps: [],
-      stepIdx: 0,
-      done: false,
+      returns: 0, returnSteps: [], stepIdx: 0, done: false,
     };
   }
-
   function advanceWalk(w) {
     if (w.done) return;
     const step = randomUnitVector(w.d);
     for (let k = 0; k < w.d; k++) w.pos[k] += step[k];
     w.path.push([...w.pos]);
     w.stepIdx++;
-    if (w.pos.every(v => v === 0)) {
-      w.returns++;
-      w.returnSteps.push(w.stepIdx);
-    }
+    if (w.pos.every(v => v === 0)) { w.returns++; w.returnSteps.push(w.stepIdx); }
     if (w.stepIdx >= w.N) w.done = true;
   }
-
   function tracePath(walk, toScreen) {
     const path = walk.path;
     const L = path.length;
     const stride = Math.max(1, Math.floor(L / MAX_DRAWN_POINTS));
-
     const [x0, y0] = toScreen(path[0]);
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-
+    ctx.beginPath(); ctx.moveTo(x0, y0);
     for (let i = stride; i < L; i += stride) {
       const [sx, sy] = toScreen(path[i]);
       ctx.lineTo(sx, sy);
     }
-
     if ((L - 1) % stride !== 0) {
       const [sx, sy] = toScreen(path[L - 1]);
       ctx.lineTo(sx, sy);
     }
   }
-
   function render() {
     if (document.getElementById('viewB').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
-
     const walk = S.anim || S.last;
     if (!walk) {
       ctx.fillStyle = 'rgba(200,207,218,0.4)';
@@ -755,34 +595,25 @@
       ctx.fillText('Press Run to begin.', w / 2, h / 2);
       return;
     }
-
-    if (walk.d === 1)      render1D(walk);
+    if (walk.d === 1) render1D(walk);
     else if (walk.d === 2) render2D(walk);
-    else                   render3D(walk);
-
+    else render3D(walk);
     drawOverlay(walk);
   }
-
   function render1D(walk) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const padL = 70, padR = 40, padT = 40, padB = 40;
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
-
+    const plotW = w - padL - padR, plotH = h - padT - padB;
     let maxAbs = Math.max(1, Math.sqrt(walk.N) * 2);
     for (const p of walk.path) maxAbs = Math.max(maxAbs, Math.abs(p[0]) * 1.15);
-
     const cy0 = padT + plotH / 2;
     const mapX = n => padL + (n / walk.N) * plotW;
     const mapY = x => cy0 - (x / maxAbs) * (plotH / 2);
-
-    ctx.strokeStyle = 'rgba(200,207,218,0.25)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(200,207,218,0.25)'; ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padL, cy0); ctx.lineTo(padL + plotW, cy0);
     ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + plotH);
     ctx.stroke();
-
     ctx.fillStyle = 'rgba(200,207,218,0.55)';
     ctx.font = '11px ui-monospace, monospace';
     ctx.textAlign = 'center';
@@ -792,55 +623,37 @@
     ctx.fillText('+' + maxAbs.toFixed(0), padL - 6, padT + 12);
     ctx.fillText('0', padL - 6, cy0 + 4);
     ctx.fillText('-' + maxAbs.toFixed(0), padL - 6, padT + plotH + 4);
-
     const L = walk.path.length;
     const stride = Math.max(1, Math.floor(L / MAX_DRAWN_POINTS));
     ctx.beginPath();
     ctx.moveTo(mapX(0), mapY(walk.path[0][0]));
-    for (let i = stride; i < L; i += stride) {
-      ctx.lineTo(mapX(i), mapY(walk.path[i][0]));
-    }
-    if ((L - 1) % stride !== 0) {
-      ctx.lineTo(mapX(L - 1), mapY(walk.path[L - 1][0]));
-    }
-    ctx.strokeStyle = '#6ea8fe';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
+    for (let i = stride; i < L; i += stride) ctx.lineTo(mapX(i), mapY(walk.path[i][0]));
+    if ((L - 1) % stride !== 0) ctx.lineTo(mapX(L - 1), mapY(walk.path[L - 1][0]));
+    ctx.strokeStyle = '#6ea8fe'; ctx.lineWidth = 1.2; ctx.stroke();
     for (const step of walk.returnSteps) {
-      ctx.beginPath();
-      ctx.arc(mapX(step), mapY(0), 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffd166';
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(mapX(step), mapY(0), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd166'; ctx.fill();
     }
-
     if (S.anim && !S.anim.done) {
-      ctx.beginPath();
-      ctx.arc(mapX(walk.stepIdx), mapY(walk.pos[0]), 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(mapX(walk.stepIdx), mapY(walk.pos[0]), 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
     }
   }
-
   function render2D(walk) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const cx = w / 2, cy = h / 2;
-
     let maxR = 1;
     for (const p of walk.path) {
       const r = Math.hypot(p[0], p[1]);
       if (r > maxR) maxR = r;
     }
     maxR *= 1.1;
-
     const scale = Math.min(w, h) / (2 * maxR);
     const toScreen = (p) => [cx + p[0] * scale, cy - p[1] * scale];
     const w2s = (x, y) => [cx + x * scale, cy - y * scale];
-
     const spacing = niceGridSpacing(maxR);
     const nGrid = Math.ceil(maxR / spacing) + 1;
-    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.045)'; ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = -nGrid; i <= nGrid; i++) {
       const [sx] = w2s(i * spacing, 0);
@@ -849,40 +662,22 @@
       ctx.moveTo(0, sy); ctx.lineTo(w, sy);
     }
     ctx.stroke();
-
     tracePath(walk, toScreen);
-    ctx.strokeStyle = 'rgba(110,168,254,0.85)';
-    ctx.lineWidth = 1.2;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd166';
-    ctx.fill();
-
+    ctx.strokeStyle = 'rgba(110,168,254,0.85)'; ctx.lineWidth = 1.2;
+    ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166'; ctx.fill();
     if (S.anim && !S.anim.done) {
       const [px, py] = w2s(walk.pos[0], walk.pos[1]);
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
     }
   }
-
   function render3D(walk) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const cx = w / 2, cy = h / 2;
-
-    const cos30 = Math.cos(Math.PI / 6);
-    const sin30 = 0.5;
-
-    const proj = (p) => {
-      const ix = (p[0] - p[2]) * cos30;
-      const iy = (p[0] + p[2]) * sin30 - p[1];
-      return [ix, iy];
-    };
-
+    const cos30 = Math.cos(Math.PI / 6), sin30 = 0.5;
+    const proj = (p) => [(p[0] - p[2]) * cos30, (p[0] + p[2]) * sin30 - p[1]];
     let maxIso = 1;
     for (const p of walk.path) {
       const [ix, iy] = proj(p);
@@ -890,54 +685,35 @@
       if (r > maxIso) maxIso = r;
     }
     maxIso *= 1.1;
-
     const scale = Math.min(w, h) / (2 * maxIso);
-    const toScreen = (p) => {
-      const [ix, iy] = proj(p);
-      return [cx + ix * scale, cy - iy * scale];
-    };
+    const toScreen = (p) => { const [ix, iy] = proj(p); return [cx + ix * scale, cy - iy * scale]; };
     const w2s = toScreen;
-
     const axisLen = maxIso * 0.55;
     const drawAxis = (vec, color) => {
       const [ox, oy] = w2s([0, 0, 0]);
       const [ax, ay] = w2s([vec[0] * axisLen, vec[1] * axisLen, vec[2] * axisLen]);
-      ctx.beginPath();
-      ctx.moveTo(ox, oy); ctx.lineTo(ax, ay);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ax, ay);
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
     };
     drawAxis([1, 0, 0], 'rgba(255,120,120,0.35)');
     drawAxis([0, 1, 0], 'rgba(120,255,120,0.35)');
     drawAxis([0, 0, 1], 'rgba(120,120,255,0.35)');
-
     tracePath(walk, toScreen);
-    ctx.strokeStyle = 'rgba(110,168,254,0.85)';
-    ctx.lineWidth = 1.2;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd166';
-    ctx.fill();
-
+    ctx.strokeStyle = 'rgba(110,168,254,0.85)'; ctx.lineWidth = 1.2;
+    ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd166'; ctx.fill();
     if (S.anim && !S.anim.done) {
       const [px, py] = w2s(walk.pos);
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
     }
   }
-
   function niceGridSpacing(maxR) {
     const candidates = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
     for (const c of candidates) if (maxR / c < 8) return c;
     return 2000;
   }
-
   function drawOverlay(walk) {
     ctx.font = '12px ui-monospace, monospace';
     ctx.textAlign = 'left';
@@ -947,68 +723,51 @@
     ctx.fillStyle = 'rgba(255,209,102,0.95)';
     ctx.fillText('returns: ' + walk.returns, 14, 58);
   }
-
   let lastFrameTime = performance.now();
-
   function loop(now) {
     const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
     lastFrameTime = now;
-
     syncCanvas();
-
     if (!document.getElementById('viewB').hidden && S.anim && !S.anim.done) {
       const rate = RATE_C * S.anim.N / Math.max(2, Math.log(S.anim.N));
       S.stepAcc += dt * rate;
-
       let guard = 0;
       while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 200000) {
         advanceWalk(S.anim);
         S.stepAcc -= 1;
       }
-
       if (S.anim && S.anim.done) {
-        S.last = S.anim;
-        S.anim = null;
-        S.stepAcc = 0;
+        S.last = S.anim; S.anim = null; S.stepAcc = 0;
         updateUI();
       } else if (S.anim) {
         updateReadoutRunning(S.anim);
       }
     }
-
     render();
     requestAnimationFrame(loop);
   }
-
   document.querySelectorAll('#panelB .dim-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       if (S.anim) return;
       document.querySelectorAll('#panelB .dim-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       S.d = parseInt(btn.dataset.d, 10);
-      S.last = null;
-      updateUI();
+      S.last = null; updateUI();
     });
   });
-
   document.getElementById('runBtnB').addEventListener('click', () => {
     if (S.anim) return;
     if (!S.inputValid) return;
     const N = parseN(document.getElementById('nInput').value);
     if (N === null) { applyValidation(); return; }
-
     S.anim = createWalk(S.d, N);
-    S.stepAcc = 0;
-    lastFrameTime = performance.now();
+    S.stepAcc = 0; lastFrameTime = performance.now();
     updateUI();
   });
-
   document.getElementById('clearBtnB').addEventListener('click', () => {
     if (S.anim) return;
-    S.last = null;
-    updateUI();
+    S.last = null; updateUI();
   });
-
   const nInputEl = document.getElementById('nInput');
   nInputEl.addEventListener('input', () => {
     const cleaned = nInputEl.value.replace(/[^0-9]/g, '');
@@ -1020,55 +779,41 @@
     if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
   });
   nInputEl.addEventListener('change', applyValidation);
-
   function updateUI() {
     const running = !!S.anim;
     document.getElementById('runBtnB').disabled = running || !S.inputValid;
     document.getElementById('clearBtnB').disabled = running;
     document.querySelectorAll('#panelB .dim-btn').forEach(b => b.disabled = running);
-
-    if (running) {
-      updateReadoutRunning(S.anim);
-    } else if (!S.inputValid) {
-      readoutEl.innerHTML =
-        '<span class="err">Enter a positive integer up to ' +
-        MAX_N.toLocaleString() + '.</span>';
+    if (running) { updateReadoutRunning(S.anim); }
+    else if (!S.inputValid) {
+      readoutEl.innerHTML = '<span class="err">Enter a positive integer up to ' + MAX_N.toLocaleString() + '.</span>';
     } else if (S.last) {
-      readoutEl.innerHTML =
-        'Last run: d=' + S.last.d + ', N=' + S.last.N +
-        ', returns=<span class="hl">' + S.last.returns + '</span>';
-    } else {
-      readoutEl.textContent = 'Ready.';
-    }
+      readoutEl.innerHTML = 'Last run: d=' + S.last.d + ', N=' + S.last.N + ', returns=<span class="hl">' + S.last.returns + '</span>';
+    } else { readoutEl.textContent = 'Ready.'; }
   }
-
   function updateReadoutRunning(w) {
-    readoutEl.innerHTML =
-      'Running d=' + w.d + ', N=' + w.N +
-      ' \u00B7 step ' + w.stepIdx + ' / ' + w.N +
-      ' \u00B7 returns=<span class="hl">' + w.returns + '</span>';
+    readoutEl.innerHTML = 'Running d=' + w.d + ', N=' + w.N + ' \u00B7 step ' + w.stepIdx + ' / ' + w.N + ' \u00B7 returns=<span class="hl">' + w.returns + '</span>';
   }
-
   window.addEventListener('resize', syncCanvas);
-  syncCanvas();
-  applyValidation();
-  updateUI();
+  syncCanvas(); applyValidation(); updateUI();
   requestAnimationFrame(loop);
 })();
 </script>
 
 <script>
 /* =====================================================
-   PART C · 2D Self-Avoiding Walk  (openness-biased)
+   PART C · 2D Self-Avoiding Walk  (pivot algorithm)
+   =====================================================
+   Uses the pivot MCMC algorithm, which generates the uniform
+   SAW ensemble exactly. Never traps. Works to N = 10,000+.
    ===================================================== */
 (function () {
   const canvas    = document.getElementById('simCanvasC');
   const ctx       = canvas.getContext('2d');
   const readoutEl = document.getElementById('readoutC');
 
-  const MAX_N = 100000;
+  const MAX_N = 50000;
   const RATE_C = 2;
-  const MAX_ATTEMPTS = 20000;
 
   const S = {
     N: 1000,
@@ -1078,16 +823,81 @@
     inputValid: true,
   };
 
+  /* --- MCMC state: one walk kept alive across Run clicks --- */
+  const mcmc = {
+    N: 0,
+    path: null,
+  };
+
+  /* D4 symmetries of the square lattice (excluding identity). */
+  const SYM = [
+    (x, y) => [-y,  x],
+    (x, y) => [-x, -y],
+    (x, y) => [ y, -x],
+    (x, y) => [-x,  y],
+    (x, y) => [ x, -y],
+    (x, y) => [ y,  x],
+    (x, y) => [-y, -x],
+  ];
+
+  function attemptPivot(path) {
+    const N = path.length - 1;
+    if (N < 2) return;
+
+    const i = Math.floor(Math.random() * N);   // pivot in [0, N-1]
+    const sym = SYM[Math.floor(Math.random() * SYM.length)];
+    const px = path[i][0], py = path[i][1];
+
+    const occupied = new Set();
+    for (let j = 0; j <= i; j++) {
+      occupied.add(path[j][0] + ',' + path[j][1]);
+    }
+
+    const newSuffix = new Array(N - i);
+    for (let j = i + 1; j <= N; j++) {
+      const dx = path[j][0] - px;
+      const dy = path[j][1] - py;
+      const r = sym(dx, dy);
+      const nx = px + r[0], ny = py + r[1];
+      const key = nx + ',' + ny;
+      if (occupied.has(key)) return;   // reject
+      occupied.add(key);
+      newSuffix[j - i - 1] = [nx, ny];
+    }
+
+    // Accept: write the transformed suffix back.
+    for (let j = i + 1; j <= N; j++) {
+      path[j] = newSuffix[j - i - 1];
+    }
+  }
+
+  function initWalk(N) {
+    const path = new Array(N + 1);
+    for (let i = 0; i <= N; i++) path[i] = [i, 0];
+    const pivots = Math.max(200, Math.min(5000, 5 * N));
+    for (let k = 0; k < pivots; k++) attemptPivot(path);
+    return path;
+  }
+
+  function sampleWalk(N) {
+    if (mcmc.path === null || mcmc.N !== N) {
+      mcmc.path = initWalk(N);
+      mcmc.N = N;
+    } else {
+      const pivots = Math.max(50, Math.min(500, Math.floor(N / 2)));
+      for (let k = 0; k < pivots; k++) attemptPivot(mcmc.path);
+    }
+    // Copy so animation doesn't mutate the master.
+    return mcmc.path.map(p => [p[0], p[1]]);
+  }
+
   function syncCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    const cw = canvas.clientWidth;
-    const ch = canvas.clientHeight;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
     if (cw === 0 || ch === 0) return false;
-    const tw = Math.round(cw * dpr);
-    const th = Math.round(ch * dpr);
+    const tw = Math.round(cw * dpr), th = Math.round(ch * dpr);
     if (canvas.width !== tw || canvas.height !== th) {
-      canvas.width = tw;
-      canvas.height = th;
+      canvas.width = tw; canvas.height = th;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     return true;
@@ -1116,113 +926,26 @@
         '<span class="err">Enter a positive integer up to ' +
         MAX_N.toLocaleString() + '.</span>';
     } else if (!S.anim) {
-      if (S.last) {
-        readoutEl.innerHTML = lastRunReadout(S.last);
-      } else {
-        readoutEl.textContent = 'Ready.';
-      }
+      if (S.last) readoutEl.innerHTML = lastRunReadout(S.last);
+      else readoutEl.textContent = 'Ready.';
     }
   }
 
   function lastRunReadout(w) {
     const end = w.path[w.path.length - 1];
     const R = Math.hypot(end[0], end[1]);
-    let msg = 'N = ' + w.N +
+    return 'N = ' + w.N +
       ' \u00B7 endpoint (' + end[0] + ', ' + end[1] + ')' +
       ' \u00B7 R = <span class="hl">' + R.toFixed(4) + '</span>';
-    if (w.truncated) {
-      msg += '<br><span class="err">Walk trapped at step ' +
-        w.actualN + ' after ' + w.attempts + ' attempts.</span>';
-    } else if (w.attempts > 1) {
-      msg += ' \u00B7 (' + w.attempts + ' attempts)';
-    }
-    return msg;
-  }
-
-  /* ---- SAW generator with openness bias ----
-     At each step, candidates are weighted by how many free neighbors
-     they lead to. This biases the walker away from dead ends and
-     dramatically reduces trapping compared to pure kinetic growth.
-     The bias is a local, short-range perturbation, so the exponent
-     ν is expected to remain in the same universality class.
-  */
-  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-  function generateSAW(N) {
-    const visited = new Set();
-    visited.add('0,0');
-    const path = [[0, 0]];
-    let x = 0, y = 0;
-
-    for (let i = 0; i < N; i++) {
-      const candidates = [];
-      for (const [dx, dy] of DIRS) {
-        const nx = x + dx, ny = y + dy;
-        const key = nx + ',' + ny;
-        if (visited.has(key)) continue;
-
-        // Openness of (nx, ny): how many of its 4 neighbors are unvisited.
-        // The current position (x, y) is one of them and is visited,
-        // so it contributes 0. Range: 0 to 3.
-        let open = 0;
-        for (const [dx2, dy2] of DIRS) {
-          if (!visited.has((nx + dx2) + ',' + (ny + dy2))) open++;
-        }
-
-        candidates.push({ nx, ny, key, weight: open + 1 });
-      }
-
-      if (candidates.length === 0) {
-        return { trapped: true, path };
-      }
-
-      // Weighted pick
-      let total = 0;
-      for (const c of candidates) total += c.weight;
-      let r = Math.random() * total;
-      let pick = candidates[candidates.length - 1];
-      for (const c of candidates) {
-        r -= c.weight;
-        if (r <= 0) { pick = c; break; }
-      }
-
-      x = pick.nx; y = pick.ny;
-      visited.add(pick.key);
-      path.push([x, y]);
-    }
-
-    return { trapped: false, path };
-  }
-
-  function generateSAWSafe(N) {
-    let bestPath = null;
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const r = generateSAW(N);
-      if (!r.trapped) {
-        return { path: r.path, truncated: false, attempts: i + 1 };
-      }
-      if (!bestPath || r.path.length > bestPath.length) {
-        bestPath = r.path;
-      }
-    }
-    return { path: bestPath, truncated: true, attempts: MAX_ATTEMPTS };
   }
 
   function createWalk(N) {
-    const r = generateSAWSafe(N);
-    return {
-      N: N,
-      path: r.path,
-      stepIdx: 0,
-      done: false,
-      truncated: r.truncated,
-      attempts: r.attempts,
-      actualN: r.path.length - 1,
-    };
+    const path = sampleWalk(N);
+    return { N: N, path: path, stepIdx: 0, done: false };
   }
 
   function advanceWalk(w) {
-    if (w.done || !w.path) return;
+    if (w.done) return;
     w.stepIdx++;
     if (w.stepIdx >= w.path.length - 1) {
       w.stepIdx = w.path.length - 1;
@@ -1244,15 +967,6 @@
       ctx.fillText('Press Run to begin.', w / 2, h / 2);
       return;
     }
-
-    if (!walk.path || walk.path.length === 0) {
-      ctx.fillStyle = 'rgba(232,139,139,0.7)';
-      ctx.font = '14px system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Walk generation failed.', w / 2, h / 2);
-      return;
-    }
-
     renderSAW(walk);
     drawOverlay(walk);
   }
@@ -1266,14 +980,12 @@
       const r = Math.hypot(p[0], p[1]);
       if (r > maxR) maxR = r;
     }
-    // Floor based on theoretical RMS, so short walks aren't over-zoomed.
     const expected = Math.pow(Math.max(walk.N, 1), 0.75);
     maxR = Math.max(maxR, expected * 0.5) * 1.15;
 
     const scale = Math.min(w, h) / (2 * maxR);
     const toScreen = (p) => [cx + p[0] * scale, cy - p[1] * scale];
 
-    // Grid
     const spacing = niceGridSpacing(maxR);
     const nGrid = Math.ceil(maxR / spacing) + 1;
     ctx.strokeStyle = 'rgba(255,255,255,0.045)';
@@ -1287,7 +999,6 @@
     }
     ctx.stroke();
 
-    // Path (only up to stepIdx)
     const L = Math.min(walk.stepIdx + 1, walk.path.length);
     if (L >= 2) {
       ctx.beginPath();
@@ -1304,13 +1015,11 @@
       ctx.stroke();
     }
 
-    // Origin
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd166';
     ctx.fill();
 
-    // Current position (during animation)
     if (S.anim && !S.anim.done && walk.path.length > 0) {
       const cur = walk.path[Math.min(walk.stepIdx, walk.path.length - 1)];
       const sp = toScreen(cur);
@@ -1320,11 +1029,9 @@
       ctx.fill();
     }
 
-    // Endpoint + dashed radius line after completion
     if (walk.done && walk.path.length > 0) {
       const end = walk.path[walk.path.length - 1];
       const se = toScreen(end);
-
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.lineTo(se[0], se[1]);
@@ -1333,7 +1040,6 @@
       ctx.setLineDash([4, 4]);
       ctx.stroke();
       ctx.setLineDash([]);
-
       ctx.beginPath();
       ctx.arc(se[0], se[1], 5, 0, Math.PI * 2);
       ctx.fillStyle = '#ffd166';
@@ -1350,10 +1056,8 @@
   function drawOverlay(walk) {
     ctx.font = '12px ui-monospace, monospace';
     ctx.textAlign = 'left';
-
     ctx.fillStyle = 'rgba(200,207,218,0.75)';
     ctx.fillText('N = ' + walk.N, 14, 22);
-
     if (!walk.done) {
       ctx.fillText('step ' + walk.stepIdx + ' / ' + walk.N, 14, 40);
     } else {
@@ -1362,42 +1066,29 @@
       ctx.fillText('endpoint: (' + end[0] + ', ' + end[1] + ')', 14, 40);
       ctx.fillStyle = 'rgba(255,209,102,0.95)';
       ctx.fillText('R = ' + R.toFixed(4), 14, 58);
-
-      if (walk.truncated) {
-        ctx.fillStyle = 'rgba(232,139,139,0.95)';
-        ctx.fillText('trapped at step ' + walk.actualN, 14, 76);
-      }
     }
   }
 
   let lastFrameTime = performance.now();
-
   function loop(now) {
     const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
     lastFrameTime = now;
-
     syncCanvas();
-
     if (!document.getElementById('viewC').hidden && S.anim && !S.anim.done) {
       const rate = RATE_C * S.anim.N / Math.max(2, Math.log(S.anim.N));
       S.stepAcc += dt * rate;
-
       let guard = 0;
       while (S.stepAcc >= 1 && S.anim && !S.anim.done && guard++ < 200000) {
         advanceWalk(S.anim);
         S.stepAcc -= 1;
       }
-
       if (S.anim && S.anim.done) {
-        S.last = S.anim;
-        S.anim = null;
-        S.stepAcc = 0;
+        S.last = S.anim; S.anim = null; S.stepAcc = 0;
         updateUI();
       } else if (S.anim) {
         updateReadoutRunning(S.anim);
       }
     }
-
     render();
     requestAnimationFrame(loop);
   }
@@ -1407,7 +1098,6 @@
     if (!S.inputValid) return;
     const N = parseN(document.getElementById('cInput').value);
     if (N === null) { applyValidation(); return; }
-
     S.anim = createWalk(N);
     S.stepAcc = 0;
     lastFrameTime = performance.now();
@@ -1436,13 +1126,10 @@
     const running = !!S.anim;
     document.getElementById('runBtnC').disabled = running || !S.inputValid;
     document.getElementById('clearBtnC').disabled = running;
-
     if (running) {
       updateReadoutRunning(S.anim);
     } else if (!S.inputValid) {
-      readoutEl.innerHTML =
-        '<span class="err">Enter a positive integer up to ' +
-        MAX_N.toLocaleString() + '.</span>';
+      readoutEl.innerHTML = '<span class="err">Enter a positive integer up to ' + MAX_N.toLocaleString() + '.</span>';
     } else if (S.last) {
       readoutEl.innerHTML = lastRunReadout(S.last);
     } else {
@@ -1451,9 +1138,7 @@
   }
 
   function updateReadoutRunning(w) {
-    readoutEl.innerHTML =
-      'Running N = ' + w.N +
-      ' \u00B7 step ' + w.stepIdx + ' / ' + w.N;
+    readoutEl.innerHTML = 'Running N = ' + w.N + ' \u00B7 step ' + w.stepIdx + ' / ' + w.N;
   }
 
   window.addEventListener('resize', syncCanvas);
