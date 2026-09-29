@@ -330,16 +330,15 @@
   <div class="simple-card">
     <h2>2A · Length of shadow</h2>
 
-    <label for="hInput2A">Height h (cm), 0 ≤ h ≤ 15</label>
+    <label for="hInput2A">Height h (cm)</label>
     <input id="hInput2A" type="text" inputmode="decimal"
            autocomplete="off" spellcheck="false" value="10">
 
     <div class="button-row">
-      <button id="computeBtn2A" class="primary">Compute L</button>
-      <button id="measureBtn2A">Simulate measurement</button>
+      <button id="runBtn2A" class="primary">Run Simulation</button>
     </div>
 
-    <div class="result" id="readout2A">Enter a height and press Compute.</div>
+    <div class="result" id="readout2A">Enter a height and press Run Simulation.</div>
   </div>
 </main>
 
@@ -1230,33 +1229,39 @@
   const hInput  = document.getElementById('hInput2A');
   const readout = document.getElementById('readout2A');
 
-  /* Inherent measurement uncertainty of the system (cm).
-     Not user-editable — fixed by the physics. */
-  const H_SIGMA = 0.1;
+  /* Problem constants (lengths in cm, angles in radians) */
+  const ALPHA = 0.785;
+  const BETA  = 0.546;
+  const ARM   = 7.15;   // 'l' in the problem statement
+  const R     = 3.20;
 
-  /* =====================================================
-     >>> FILL THIS IN <<<
-     Given a height h in cm (0 ≤ h ≤ 15), return the shadow
-     length L in cm. Replace the placeholder.
-     ===================================================== */
+  /* Precompute shared quantities and the three h thresholds */
+  const SIN_A = Math.sin(ALPHA);
+  const COS_A = Math.cos(ALPHA);
+  const TAN_A = Math.tan(ALPHA);
+  const COS_B = Math.cos(BETA);
+  const TAN_B = Math.tan(BETA);
+
+  const T1 = ARM + R * (1 - SIN_A);
+  const T2 = ARM + R * (1 - Math.sin(BETA));
+  const T3 = ARM + R + R * (COS_A - COS_B) / Math.sin(BETA - ALPHA);
+
+  /* ---------- The physics ---------- */
   function computeL(h) {
-    // TODO: replace with the real formula from the problem.
-    return h;               // placeholder: shadow = height
-  }
-  /* ===================================================== */
-
-  /* ---------- Gaussian random number ----------
-     Returns a sample from Normal(mean, stddev).
-     Uses the Box–Muller transform. */
-  function gaussian(mean, stddev) {
-    let u = 0, v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
-    return mean + stddev * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    if (h < T1) {
+      return 2 * R / COS_A;
+    } else if (h < T2) {
+      const d = h - R - ARM;
+      return R / COS_A - d * TAN_A + Math.sqrt(R * R - d * d);
+    } else if (h < T3) {
+      const d = h - R - ARM;
+      return R / COS_A + R / COS_B + d * (TAN_B - TAN_A);
+    } else {
+      return 2 * R / COS_B;
+    }
   }
 
-  /* ---------- Input parsing ---------- */
-  // Accepts digits and at most one decimal point.
+  /* ---------- Input handling ---------- */
   function parseFloatInRange(raw, min, max) {
     const s = String(raw).trim();
     if (!/^\d*\.?\d*$/.test(s) || s === '' || s === '.') return null;
@@ -1266,49 +1271,31 @@
     return n;
   }
 
-  // Filter the input field to allow only digits and one dot.
-  function attachFloatFilter(el) {
-    el.addEventListener('input', () => {
-      let s = el.value.replace(/[^0-9.]/g, '');
-      const firstDot = s.indexOf('.');
-      if (firstDot !== -1) {
-        s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
-      }
-      if (s !== el.value) el.value = s;
-    });
-    el.addEventListener('keydown', (e) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key.length === 1 && !/[0-9.]/.test(e.key)) e.preventDefault();
-    });
-  }
-  attachFloatFilter(hInput);
+  hInput.addEventListener('input', () => {
+    let s = hInput.value.replace(/[^0-9.]/g, '');
+    const firstDot = s.indexOf('.');
+    if (firstDot !== -1) {
+      s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
+    }
+    if (s !== hInput.value) hInput.value = s;
+  });
+  hInput.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 && !/[0-9.]/.test(e.key)) e.preventDefault();
+  });
 
-  /* ---------- Handlers ---------- */
   function showError(msg) {
     readout.innerHTML = '<span class="err">' + msg + '</span>';
   }
 
-  document.getElementById('computeBtn2A').addEventListener('click', () => {
+  /* ---------- Handler ---------- */
+  document.getElementById('runBtn2A').addEventListener('click', () => {
     const h = parseFloatInRange(hInput.value, 0, 15);
     if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
 
     const L = computeL(h);
     readout.innerHTML =
       'h = ' + h.toFixed(3) + ' cm<br>' +
-      'L = <span class="value">' + L.toFixed(3) + '</span> cm';
-  });
-
-  document.getElementById('measureBtn2A').addEventListener('click', () => {
-    const h = parseFloatInRange(hInput.value, 0, 15);
-    if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
-
-    // Measurement of h has inherent Gaussian noise of width H_SIGMA.
-    const hMeasured = h + gaussian(0, H_SIGMA);
-    const L = computeL(hMeasured);
-
-    readout.innerHTML =
-      'h (true) = ' + h.toFixed(3) + ' cm<br>' +
-      'h (measured) = ' + hMeasured.toFixed(3) + ' cm<br>' +
       'L = <span class="value">' + L.toFixed(3) + '</span> cm';
   });
 })();
