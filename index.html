@@ -35,11 +35,22 @@
     cursor: pointer;
     font-family: inherit;
   }
-  .part-tab:hover { background: #1f2530; }
+  .part-tab:hover:not(:disabled) { background: #1f2530; }
   .part-tab.active {
     background: #1f3a5f;
     border-color: #3b6ea5;
     color: #cfe3ff;
+  }
+  .part-tab:disabled,
+  .part-tab.soon {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-style: dashed;
+  }
+  .part-tab.soon::after {
+    content: ' (soon)';
+    font-size: 0.72em;
+    color: #8b93a1;
   }
   nav.parts .divider {
     width: 1px;
@@ -54,18 +65,6 @@
     min-height: 0;
   }
   main[hidden] { display: none; }
-  main.placeholder-main {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #0b0d12;
-  }
-  .placeholder-msg {
-    color: #6b7280;
-    font-family: ui-monospace, monospace;
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
-  }
   .canvas-wrap {
     position: relative;
     background: #0b0d12;
@@ -171,14 +170,14 @@
 <header>
   <h1>Physics Olympiad Simulation Lab</h1>
   <nav class="parts">
-    <button class="part-tab active" data-part="1A">1A</button>
-    <button class="part-tab" data-part="1B">1B</button>
-    <button class="part-tab" data-part="1C">1C</button>
-    <button class="part-tab" data-part="1D">1D</button>
+    <button class="part-tab active" data-part="1A">1A · 2D Random Walk</button>
+    <button class="part-tab" data-part="1B">1B · Lattice Walk</button>
+    <button class="part-tab" data-part="1C">1C · Self-Avoiding Walk</button>
+    <button class="part-tab soon" disabled>1D</button>
     <span class="divider"></span>
-    <button class="part-tab" data-part="2A">2A</button>
-    <button class="part-tab" data-part="2B">2B</button>
-    <button class="part-tab" data-part="2C">2C</button>
+    <button class="part-tab soon" disabled>2A</button>
+    <button class="part-tab soon" disabled>2B</button>
+    <button class="part-tab soon" disabled>2C</button>
   </nav>
 </header>
 
@@ -242,44 +241,21 @@
   </aside>
 </main>
 
-<!-- ============================ 1D (placeholder) ============================ -->
-<main id="view1D" hidden class="placeholder-main">
-  <div class="placeholder-msg">1D · Coming soon</div>
-</main>
-
-<!-- ============================ 2A (placeholder) ============================ -->
-<main id="view2A" hidden class="placeholder-main">
-  <div class="placeholder-msg">2A · Coming soon</div>
-</main>
-
-<!-- ============================ 2B (placeholder) ============================ -->
-<main id="view2B" hidden class="placeholder-main">
-  <div class="placeholder-msg">2B · Coming soon</div>
-</main>
-
-<!-- ============================ 2C (placeholder) ============================ -->
-<main id="view2C" hidden class="placeholder-main">
-  <div class="placeholder-msg">2C · Coming soon</div>
-</main>
-
 <script>
 /* =====================================================
    Tab switching
    ===================================================== */
 (function () {
-  const tabs = document.querySelectorAll('.part-tab');
+  const tabs = document.querySelectorAll('.part-tab[data-part]');
   const views = {
     '1A': document.getElementById('viewA'),
     '1B': document.getElementById('viewB'),
     '1C': document.getElementById('viewC'),
-    '1D': document.getElementById('view1D'),
-    '2A': document.getElementById('view2A'),
-    '2B': document.getElementById('view2B'),
-    '2C': document.getElementById('view2C'),
   };
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
+      if (tab.disabled) return;
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const part = tab.dataset.part;
