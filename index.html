@@ -160,7 +160,6 @@
   }
   .panel input[type="text"]:focus { border-color: #3b6ea5; }
 
-  /* Simple centered card layout (used by 2A) */
   main.simple-view {
     display: flex;
     align-items: center;
@@ -175,6 +174,8 @@
     border: 1px solid #2a2f3a;
     border-radius: 10px;
     padding: 1.5rem 1.75rem 1.75rem;
+    max-height: 100%;
+    overflow-y: auto;
   }
   .simple-card h2 {
     margin: 0 0 1.1rem;
@@ -254,13 +255,13 @@
 <header>
   <h1>Physics Olympiad Simulation Lab</h1>
   <nav class="parts">
-    <button class="part-tab active" data-part="1A">1A. 2D Random Walk</button>
-    <button class="part-tab" data-part="1B">1B. Lattice Walk</button>
-    <button class="part-tab" data-part="1C">1C. Self-Avoiding Walk</button>
+    <button class="part-tab active" data-part="1A">1A · 2D Random Walk</button>
+    <button class="part-tab" data-part="1B">1B · Lattice Walk</button>
+    <button class="part-tab" data-part="1C">1C · Self-Avoiding Walk</button>
     <button class="part-tab soon" disabled>1D</button>
     <span class="divider"></span>
-    <button class="part-tab" data-part="2A">2A. Shadow Length</button>
-    <button class="part-tab soon" disabled>2B</button>
+    <button class="part-tab" data-part="2A">2A · Shadow Length</button>
+    <button class="part-tab" data-part="2B">2B · Shadow Area</button>
     <button class="part-tab soon" disabled>2C</button>
   </nav>
 </header>
@@ -328,7 +329,7 @@
 <!-- ============================ 2A ============================ -->
 <main id="view2A" hidden class="simple-view">
   <div class="simple-card">
-    <h2>2A · Length of shadow</h2>
+    <h2>2A · Shadow Length</h2>
 
     <label for="hInput2A">Height h (cm)</label>
     <input id="hInput2A" type="text" inputmode="decimal"
@@ -339,6 +340,28 @@
     </div>
 
     <div class="result" id="readout2A">Enter a height and press Run Simulation.</div>
+  </div>
+</main>
+
+<!-- ============================ 2B ============================ -->
+<main id="view2B" hidden class="simple-view">
+  <div class="simple-card">
+    <h2>2B · Shadow Area</h2>
+
+    <label for="xInput2B">Sphere center x (cm)</label>
+    <input id="xInput2B" type="text" autocomplete="off" spellcheck="false" value="0">
+
+    <label for="yInput2B">Sphere center y (cm)</label>
+    <input id="yInput2B" type="text" autocomplete="off" spellcheck="false" value="0">
+
+    <label for="zInput2B">Sphere center z (cm), 20 &lt; z &lt; 80</label>
+    <input id="zInput2B" type="text" autocomplete="off" spellcheck="false" value="50">
+
+    <div class="button-row">
+      <button id="runBtn2B" class="primary">Compute Shadow Area</button>
+    </div>
+
+    <div class="result" id="readout2B">Place the sphere and press Compute.</div>
   </div>
 </main>
 
@@ -353,6 +376,7 @@
     '1B': document.getElementById('viewB'),
     '1C': document.getElementById('viewC'),
     '2A': document.getElementById('view2A'),
+    '2B': document.getElementById('view2B'),
   };
 
   tabs.forEach(tab => {
@@ -1223,21 +1247,19 @@
 
 <script>
 /* =====================================================
-   2A · Shadow length (with two-stage uncertainty)
+   2A · Shadow Length (with two-stage uncertainty)
    ===================================================== */
 (function () {
   const hInput  = document.getElementById('hInput2A');
   const readout = document.getElementById('readout2A');
 
-  /* Problem constants (lengths in cm, angles in radians) */
   const ALPHA = 0.785;
   const BETA  = 0.546;
-  const ARM   = 7.15;   // 'l' in the problem statement
+  const ARM   = 7.15;
   const R     = 3.20;
 
-  /* Inherent measurement uncertainties (cm) */
-  const H_NOISE = 0.05;   // height:  ±0.05 cm
-  const L_NOISE = 0.10;   // shadow:  ±0.10 cm
+  const H_NOISE = 0.05;
+  const L_NOISE = 0.10;
 
   const SIN_A = Math.sin(ALPHA);
   const COS_A = Math.cos(ALPHA);
@@ -1249,7 +1271,6 @@
   const T2 = ARM + R * (1 - Math.sin(BETA));
   const T3 = ARM + R + R * (COS_A - COS_B) / Math.sin(BETA - ALPHA);
 
-  /* ---------- The physics (no uncertainty) ---------- */
   function computeL(h) {
     if (h < T1) {
       return 2 * R / COS_A;
@@ -1264,12 +1285,10 @@
     }
   }
 
-  /* ---------- Uniform random in [min, max) ---------- */
   function uniform(min, max) {
     return min + Math.random() * (max - min);
   }
 
-  /* ---------- Input handling ---------- */
   function parseFloatInRange(raw, min, max) {
     const s = String(raw).trim();
     if (!/^\d*\.?\d*$/.test(s) || s === '' || s === '.') return null;
@@ -1296,23 +1315,139 @@
     readout.innerHTML = '<span class="err">' + msg + '</span>';
   }
 
-  /* ---------- Handler ---------- */
   document.getElementById('runBtn2A').addEventListener('click', () => {
     const h = parseFloatInRange(hInput.value, 0, 15);
     if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
 
-    // Stage 1: the height is measured with error.
     const hMeasured = h + uniform(-H_NOISE, H_NOISE);
-
-    // Stage 2: the true shadow is computed from the measured height.
     const LTrue = computeL(hMeasured);
-
-    // Stage 3: the shadow is measured with its own (larger) error.
     const LMeasured = LTrue + uniform(-L_NOISE, L_NOISE);
 
     readout.innerHTML =
       'h = ' + h.toFixed(2) + ' cm<br>' +
       'L = <span class="value">' + LMeasured.toFixed(2) + '</span> cm';
+  });
+})();
+</script>
+
+<script>
+/* =====================================================
+   2B · Shadow Area (black box)
+   ===================================================== */
+(function () {
+  const xInput  = document.getElementById('xInput2B');
+  const yInput  = document.getElementById('yInput2B');
+  const zInput  = document.getElementById('zInput2B');
+  const readout = document.getElementById('readout2B');
+
+  /* ---- Hidden truth (never shown to student) ---- */
+  const SX = 32;
+  const SY = 41;
+  const SZ = 139;
+  const R  = 17;
+
+  /* ---- Ground plane bounds ---- */
+  const HALF = 100;   // plane is [-100, 100]^2
+  const N    = 800;   // lattice resolution per side
+
+  /* ---- Core: shadow area via lattice sweep ----
+     For each lattice point P on z = 0, test whether the
+     segment from the source S to P intersects the sphere
+     (center C, radius R). Sum cell areas of shadowed points. */
+  function shadowArea(cx, cy, cz) {
+    const step = (2 * HALF) / N;
+    const cellArea = step * step;
+
+    // u = S - C  (source relative to sphere center)
+    const ux = SX - cx;
+    const uy = SY - cy;
+    const uz = SZ - cz;
+
+    // c = |u|² - R²  is constant across the sweep
+    const c0 = ux*ux + uy*uy + uz*uz - R*R;
+
+    // v = P - S, and Pz = 0, so vz = -SZ is constant
+    const vz  = -SZ;
+    const vzSq = vz * vz;
+    const uzVz = uz * vz;
+
+    let count = 0;
+
+    for (let i = 0; i < N; i++) {
+      const px = -HALF + (i + 0.5) * step;
+      const vxb = px - SX;
+
+      for (let j = 0; j < N; j++) {
+        const py = -HALF + (j + 0.5) * step;
+        const vyb = py - SY;
+
+        // f(t) = a t² + b t + c  is |S + t(P-S) - C|² - R²
+        const a = vxb*vxb + vyb*vyb + vzSq;
+        const b = 2 * (ux*vxb + uy*vyb + uzVz);
+
+        const tStar = -b / (2 * a);
+        let fMin;
+        if (tStar <= 0)      fMin = c0;
+        else if (tStar >= 1) fMin = a + b + c0;
+        else                 fMin = c0 - (b*b) / (4 * a);
+
+        if (fMin < 0) count++;
+      }
+    }
+    return count * cellArea;
+  }
+
+  /* ---- Input handling (allow negative numbers) ---- */
+  function attachSignedFloatFilter(el) {
+    el.addEventListener('input', () => {
+      let s = el.value.replace(/[^0-9.\-]/g, '');
+      if (s.startsWith('-')) s = '-' + s.slice(1).replace(/-/g, '');
+      else                   s = s.replace(/-/g, '');
+      const dot = s.indexOf('.');
+      if (dot !== -1) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, '');
+      if (s !== el.value) el.value = s;
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Enter') {
+        document.getElementById('runBtn2B').click();
+        return;
+      }
+      if (e.key.length === 1 && !/[0-9.\-]/.test(e.key)) e.preventDefault();
+    });
+  }
+  attachSignedFloatFilter(xInput);
+  attachSignedFloatFilter(yInput);
+  attachSignedFloatFilter(zInput);
+
+  function parseFree(raw) {
+    const s = String(raw).trim();
+    if (s === '' || s === '-' || s === '.' || s === '-.') return null;
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    return n;
+  }
+
+  function showError(msg) {
+    readout.innerHTML = '<span class="err">' + msg + '</span>';
+  }
+
+  /* ---- Handler ---- */
+  document.getElementById('runBtn2B').addEventListener('click', () => {
+    const cx = parseFree(xInput.value);
+    const cy = parseFree(yInput.value);
+    const cz = parseFree(zInput.value);
+
+    if (cx === null || cy === null || cz === null) {
+      showError('x, y, z must be valid numbers.'); return;
+    }
+    if (cz <= 20 || cz >= 80) {
+      showError('z must satisfy 20 < z < 80 cm.'); return;
+    }
+
+    const area = shadowArea(cx, cy, cz);
+    readout.innerHTML =
+      'Shadow area = <span class="value">' + area.toFixed(1) + '</span> cm²';
   });
 })();
 </script>
