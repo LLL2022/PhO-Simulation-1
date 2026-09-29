@@ -1341,60 +1341,35 @@
   const readout = document.getElementById('readout2B');
 
   /* ---- Hidden truth (never shown to student) ---- */
-  const SX = 32;
-  const SY = 41;
-  const SZ = 139;
-  const R  = 17;
+  const sx = 32;
+  const sy = 41;
+  const sz = 139;
+  const r  = 17;
 
-  /* ---- Ground plane bounds ---- */
-  const HALF = 100;   // plane is [-100, 100]^2
-  const N    = 800;   // lattice resolution per side
+  /* ---- Position uncertainty (cm) on the sphere center ---- */
+  const POS_NOISE = 0.05;
 
-  /* ---- Core: shadow area via lattice sweep ----
-     For each lattice point P on z = 0, test whether the
-     segment from the source S to P intersects the sphere
-     (center C, radius R). Sum cell areas of shadowed points. */
+  function uniform(min, max) {
+    return min + Math.random() * (max - min);
+  }
+
+  /* ---- Exact shadow area on z = 0 ----
+     A = pi r^2 sz^2 (D/d) sqrt(d^2 - r^2) / (D^2 - r^2)^{3/2}
+     with D = sz - cz, d^2 = (cx-sx)^2 + (cy-sy)^2 + D^2.
+     Returns 0 in the physically impossible cases (sphere above source). */
   function shadowArea(cx, cy, cz) {
-    const step = (2 * HALF) / N;
-    const cellArea = step * step;
+    const D = sz - cz;
+    if (D <= 0) return 0;
 
-    // u = S - C  (source relative to sphere center)
-    const ux = SX - cx;
-    const uy = SY - cy;
-    const uz = SZ - cz;
+    const a2 = (cx - sx) * (cx - sx) + (cy - sy) * (cy - sy);
+    const d2 = a2 + D * D;
 
-    // c = |u|² - R²  is constant across the sweep
-    const c0 = ux*ux + uy*uy + uz*uz - R*R;
+    const D2r2 = D * D - r * r;
+    const d2r2 = d2 - r * r;
+    if (D2r2 <= 0 || d2r2 <= 0) return 0;
 
-    // v = P - S, and Pz = 0, so vz = -SZ is constant
-    const vz  = -SZ;
-    const vzSq = vz * vz;
-    const uzVz = uz * vz;
-
-    let count = 0;
-
-    for (let i = 0; i < N; i++) {
-      const px = -HALF + (i + 0.5) * step;
-      const vxb = px - SX;
-
-      for (let j = 0; j < N; j++) {
-        const py = -HALF + (j + 0.5) * step;
-        const vyb = py - SY;
-
-        // f(t) = a t² + b t + c  is |S + t(P-S) - C|² - R²
-        const a = vxb*vxb + vyb*vyb + vzSq;
-        const b = 2 * (ux*vxb + uy*vyb + uzVz);
-
-        const tStar = -b / (2 * a);
-        let fMin;
-        if (tStar <= 0)      fMin = c0;
-        else if (tStar >= 1) fMin = a + b + c0;
-        else                 fMin = c0 - (b*b) / (4 * a);
-
-        if (fMin < 0) count++;
-      }
-    }
-    return count * cellArea;
+    return Math.PI * r * r * sz * sz * (D / Math.sqrt(d2))
+           * Math.sqrt(d2r2) / Math.pow(D2r2, 1.5);
   }
 
   /* ---- Input handling (allow negative numbers) ---- */
@@ -1445,9 +1420,16 @@
       showError('z must satisfy 20 < z < 80 cm.'); return;
     }
 
-    const area = shadowArea(cx, cy, cz);
+    // Stage 1: the sphere is placed with positioning error.
+    const cxA = cx + uniform(-POS_NOISE, POS_NOISE);
+    const cyA = cy + uniform(-POS_NOISE, POS_NOISE);
+    const czA = cz + uniform(-POS_NOISE, POS_NOISE);
+
+    // Stage 2: exact shadow area at the actual position.
+    const A = shadowArea(cxA, cyA, czA);
+
     readout.innerHTML =
-      'Shadow area = <span class="value">' + area.toFixed(1) + '</span> cm²';
+      'Shadow area = <span class="value">' + A.toFixed(1) + '</span> cm²';
   });
 })();
 </script>
