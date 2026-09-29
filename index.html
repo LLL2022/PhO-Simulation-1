@@ -64,7 +64,7 @@
     flex: 1;
     min-height: 0;
   }
-  main[hidden] { display: none; }
+  main[hidden] { display: none !important; }
   .canvas-wrap {
     position: relative;
     background: #0b0d12;
@@ -333,10 +333,6 @@
     <label for="hInput2A">Height h (cm), 0 ≤ h ≤ 15</label>
     <input id="hInput2A" type="text" inputmode="decimal"
            autocomplete="off" spellcheck="false" value="10">
-
-    <label for="sigmaInput2A">Measurement uncertainty σ_h (cm)</label>
-    <input id="sigmaInput2A" type="text" inputmode="decimal"
-           autocomplete="off" spellcheck="false" value="0.1">
 
     <div class="button-row">
       <button id="computeBtn2A" class="primary">Compute L</button>
@@ -1231,9 +1227,12 @@
    2A · Shadow length
    ===================================================== */
 (function () {
-  const hInput     = document.getElementById('hInput2A');
-  const sigmaInput = document.getElementById('sigmaInput2A');
-  const readout    = document.getElementById('readout2A');
+  const hInput  = document.getElementById('hInput2A');
+  const readout = document.getElementById('readout2A');
+
+  /* Inherent measurement uncertainty of the system (cm).
+     Not user-editable — fixed by the physics. */
+  const H_SIGMA = 0.1;
 
   /* =====================================================
      >>> FILL THIS IN <<<
@@ -1267,7 +1266,7 @@
     return n;
   }
 
-  // Filter the input fields to allow only digits and one dot.
+  // Filter the input field to allow only digits and one dot.
   function attachFloatFilter(el) {
     el.addEventListener('input', () => {
       let s = el.value.replace(/[^0-9.]/g, '');
@@ -1283,7 +1282,6 @@
     });
   }
   attachFloatFilter(hInput);
-  attachFloatFilter(sigmaInput);
 
   /* ---------- Handlers ---------- */
   function showError(msg) {
@@ -1304,11 +1302,8 @@
     const h = parseFloatInRange(hInput.value, 0, 15);
     if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
 
-    const sigma = parseFloatInRange(sigmaInput.value, 0, 15);
-    if (sigma === null) { showError('Uncertainty σ must be a non-negative number.'); return; }
-
-    // Simulate a measurement: h_measured = h_true + gaussian noise
-    const hMeasured = h + gaussian(0, sigma);
+    // Measurement of h has inherent Gaussian noise of width H_SIGMA.
+    const hMeasured = h + gaussian(0, H_SIGMA);
     const L = computeL(hMeasured);
 
     readout.innerHTML =
