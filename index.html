@@ -24,7 +24,7 @@
     flex-wrap: wrap;
   }
   h1 { margin: 0; font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; }
-  nav.parts { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  nav.parts { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
   .part-tab {
     padding: 0.4rem 0.95rem;
     font-size: 0.82rem;
@@ -41,6 +41,12 @@
     border-color: #3b6ea5;
     color: #cfe3ff;
   }
+  nav.parts .divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 0.1rem 0.4rem;
+    background: #2a2f3a;
+  }
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -48,6 +54,18 @@
     min-height: 0;
   }
   main[hidden] { display: none; }
+  main.placeholder-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b0d12;
+  }
+  .placeholder-msg {
+    color: #6b7280;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
   .canvas-wrap {
     position: relative;
     background: #0b0d12;
@@ -153,12 +171,18 @@
 <header>
   <h1>Physics Olympiad Simulation Lab</h1>
   <nav class="parts">
-    <button class="part-tab active" data-part="A">Part A · 2D Random Walk</button>
-    <button class="part-tab" data-part="B">Part B · Lattice Walk</button>
-    <button class="part-tab" data-part="C">Part C · Self-Avoiding Walk</button>
+    <button class="part-tab active" data-part="1A">1A</button>
+    <button class="part-tab" data-part="1B">1B</button>
+    <button class="part-tab" data-part="1C">1C</button>
+    <button class="part-tab" data-part="1D">1D</button>
+    <span class="divider"></span>
+    <button class="part-tab" data-part="2A">2A</button>
+    <button class="part-tab" data-part="2B">2B</button>
+    <button class="part-tab" data-part="2C">2C</button>
   </nav>
 </header>
 
+<!-- ============================ 1A ============================ -->
 <main id="viewA">
   <section class="canvas-wrap">
     <canvas id="simCanvasA"></canvas>
@@ -179,6 +203,7 @@
   </aside>
 </main>
 
+<!-- ============================ 1B ============================ -->
 <main id="viewB" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasB"></canvas>
@@ -200,6 +225,7 @@
   </aside>
 </main>
 
+<!-- ============================ 1C ============================ -->
 <main id="viewC" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasC"></canvas>
@@ -216,15 +242,42 @@
   </aside>
 </main>
 
+<!-- ============================ 1D (placeholder) ============================ -->
+<main id="view1D" hidden class="placeholder-main">
+  <div class="placeholder-msg">1D · Coming soon</div>
+</main>
+
+<!-- ============================ 2A (placeholder) ============================ -->
+<main id="view2A" hidden class="placeholder-main">
+  <div class="placeholder-msg">2A · Coming soon</div>
+</main>
+
+<!-- ============================ 2B (placeholder) ============================ -->
+<main id="view2B" hidden class="placeholder-main">
+  <div class="placeholder-msg">2B · Coming soon</div>
+</main>
+
+<!-- ============================ 2C (placeholder) ============================ -->
+<main id="view2C" hidden class="placeholder-main">
+  <div class="placeholder-msg">2C · Coming soon</div>
+</main>
+
 <script>
-/* Tab switching */
+/* =====================================================
+   Tab switching
+   ===================================================== */
 (function () {
   const tabs = document.querySelectorAll('.part-tab');
   const views = {
-    A: document.getElementById('viewA'),
-    B: document.getElementById('viewB'),
-    C: document.getElementById('viewC'),
+    '1A': document.getElementById('viewA'),
+    '1B': document.getElementById('viewB'),
+    '1C': document.getElementById('viewC'),
+    '1D': document.getElementById('view1D'),
+    '2A': document.getElementById('view2A'),
+    '2B': document.getElementById('view2B'),
+    '2C': document.getElementById('view2C'),
   };
+
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
@@ -238,7 +291,7 @@
 
 <script>
 /* =====================================================
-   PART A · 2D Random Walk
+   1A · 2D Random Walk
    ===================================================== */
 (function () {
   const canvas  = document.getElementById('simCanvasA');
@@ -497,7 +550,7 @@
 
 <script>
 /* =====================================================
-   PART B · Lattice Random Walk
+   1B · Lattice Random Walk
    ===================================================== */
 (function () {
   const canvas    = document.getElementById('simCanvasB');
@@ -802,34 +855,17 @@
 
 <script>
 /* =====================================================
-   PART C · 2D Self-Avoiding Walk  (pivot algorithm)
-   =====================================================
-   Uses the pivot MCMC algorithm, which generates the uniform
-   SAW ensemble exactly. Never traps. Works to N = 10,000+.
+   1C · 2D Self-Avoiding Walk  (pivot algorithm)
    ===================================================== */
 (function () {
   const canvas    = document.getElementById('simCanvasC');
   const ctx       = canvas.getContext('2d');
   const readoutEl = document.getElementById('readoutC');
-
   const MAX_N = 50000;
   const RATE_C = 2;
+  const S = { N: 1000, anim: null, last: null, stepAcc: 0, inputValid: true };
+  const mcmc = { N: 0, path: null };
 
-  const S = {
-    N: 1000,
-    anim: null,
-    last: null,
-    stepAcc: 0,
-    inputValid: true,
-  };
-
-  /* --- MCMC state: one walk kept alive across Run clicks --- */
-  const mcmc = {
-    N: 0,
-    path: null,
-  };
-
-  /* D4 symmetries of the square lattice (excluding identity). */
   const SYM = [
     (x, y) => [-y,  x],
     (x, y) => [-x, -y],
@@ -839,20 +875,14 @@
     (x, y) => [ y,  x],
     (x, y) => [-y, -x],
   ];
-
   function attemptPivot(path) {
     const N = path.length - 1;
     if (N < 2) return;
-
-    const i = Math.floor(Math.random() * N);   // pivot in [0, N-1]
+    const i = Math.floor(Math.random() * N);
     const sym = SYM[Math.floor(Math.random() * SYM.length)];
     const px = path[i][0], py = path[i][1];
-
     const occupied = new Set();
-    for (let j = 0; j <= i; j++) {
-      occupied.add(path[j][0] + ',' + path[j][1]);
-    }
-
+    for (let j = 0; j <= i; j++) occupied.add(path[j][0] + ',' + path[j][1]);
     const newSuffix = new Array(N - i);
     for (let j = i + 1; j <= N; j++) {
       const dx = path[j][0] - px;
@@ -860,17 +890,12 @@
       const r = sym(dx, dy);
       const nx = px + r[0], ny = py + r[1];
       const key = nx + ',' + ny;
-      if (occupied.has(key)) return;   // reject
+      if (occupied.has(key)) return;
       occupied.add(key);
       newSuffix[j - i - 1] = [nx, ny];
     }
-
-    // Accept: write the transformed suffix back.
-    for (let j = i + 1; j <= N; j++) {
-      path[j] = newSuffix[j - i - 1];
-    }
+    for (let j = i + 1; j <= N; j++) path[j] = newSuffix[j - i - 1];
   }
-
   function initWalk(N) {
     const path = new Array(N + 1);
     for (let i = 0; i <= N; i++) path[i] = [i, 0];
@@ -878,7 +903,6 @@
     for (let k = 0; k < pivots; k++) attemptPivot(path);
     return path;
   }
-
   function sampleWalk(N) {
     if (mcmc.path === null || mcmc.N !== N) {
       mcmc.path = initWalk(N);
@@ -887,10 +911,8 @@
       const pivots = Math.max(50, Math.min(500, Math.floor(N / 2)));
       for (let k = 0; k < pivots; k++) attemptPivot(mcmc.path);
     }
-    // Copy so animation doesn't mutate the master.
     return mcmc.path.map(p => [p[0], p[1]]);
   }
-
   function syncCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
@@ -902,7 +924,6 @@
     }
     return true;
   }
-
   function parseN(raw) {
     const s = String(raw).trim();
     if (s.length === 0) return null;
@@ -911,26 +932,20 @@
     if (n < 1 || n > MAX_N) return null;
     return n;
   }
-
   function applyValidation() {
     const raw = document.getElementById('cInput').value;
     const n = parseN(raw);
     S.inputValid = (n !== null);
     if (n !== null) S.N = n;
-
     const runBtn = document.getElementById('runBtnC');
     if (!S.anim) runBtn.disabled = !S.inputValid;
-
     if (!S.inputValid) {
-      readoutEl.innerHTML =
-        '<span class="err">Enter a positive integer up to ' +
-        MAX_N.toLocaleString() + '.</span>';
+      readoutEl.innerHTML = '<span class="err">Enter a positive integer up to ' + MAX_N.toLocaleString() + '.</span>';
     } else if (!S.anim) {
       if (S.last) readoutEl.innerHTML = lastRunReadout(S.last);
       else readoutEl.textContent = 'Ready.';
     }
   }
-
   function lastRunReadout(w) {
     const end = w.path[w.path.length - 1];
     const R = Math.hypot(end[0], end[1]);
@@ -938,12 +953,10 @@
       ' \u00B7 endpoint (' + end[0] + ', ' + end[1] + ')' +
       ' \u00B7 R = <span class="hl">' + R.toFixed(4) + '</span>';
   }
-
   function createWalk(N) {
     const path = sampleWalk(N);
     return { N: N, path: path, stepIdx: 0, done: false };
   }
-
   function advanceWalk(w) {
     if (w.done) return;
     w.stepIdx++;
@@ -952,13 +965,11 @@
       w.done = true;
     }
   }
-
   function render() {
     if (document.getElementById('viewC').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
-
     const walk = S.anim || S.last;
     if (!walk) {
       ctx.fillStyle = 'rgba(200,207,218,0.4)';
@@ -970,11 +981,9 @@
     renderSAW(walk);
     drawOverlay(walk);
   }
-
   function renderSAW(walk) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const cx = w / 2, cy = h / 2;
-
     let maxR = 1;
     for (const p of walk.path) {
       const r = Math.hypot(p[0], p[1]);
@@ -982,10 +991,8 @@
     }
     const expected = Math.pow(Math.max(walk.N, 1), 0.75);
     maxR = Math.max(maxR, expected * 0.5) * 1.15;
-
     const scale = Math.min(w, h) / (2 * maxR);
     const toScreen = (p) => [cx + p[0] * scale, cy - p[1] * scale];
-
     const spacing = niceGridSpacing(maxR);
     const nGrid = Math.ceil(maxR / spacing) + 1;
     ctx.strokeStyle = 'rgba(255,255,255,0.045)';
@@ -998,7 +1005,6 @@
       ctx.moveTo(0, sy); ctx.lineTo(w, sy);
     }
     ctx.stroke();
-
     const L = Math.min(walk.stepIdx + 1, walk.path.length);
     if (L >= 2) {
       ctx.beginPath();
@@ -1014,12 +1020,10 @@
       ctx.lineCap = 'round';
       ctx.stroke();
     }
-
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd166';
     ctx.fill();
-
     if (S.anim && !S.anim.done && walk.path.length > 0) {
       const cur = walk.path[Math.min(walk.stepIdx, walk.path.length - 1)];
       const sp = toScreen(cur);
@@ -1028,7 +1032,6 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
     }
-
     if (walk.done && walk.path.length > 0) {
       const end = walk.path[walk.path.length - 1];
       const se = toScreen(end);
@@ -1046,13 +1049,11 @@
       ctx.fill();
     }
   }
-
   function niceGridSpacing(maxR) {
     const candidates = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
     for (const c of candidates) if (maxR / c < 8) return c;
     return 2000;
   }
-
   function drawOverlay(walk) {
     ctx.font = '12px ui-monospace, monospace';
     ctx.textAlign = 'left';
@@ -1068,7 +1069,6 @@
       ctx.fillText('R = ' + R.toFixed(4), 14, 58);
     }
   }
-
   let lastFrameTime = performance.now();
   function loop(now) {
     const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
@@ -1092,7 +1092,6 @@
     render();
     requestAnimationFrame(loop);
   }
-
   document.getElementById('runBtnC').addEventListener('click', () => {
     if (S.anim) return;
     if (!S.inputValid) return;
@@ -1103,13 +1102,11 @@
     lastFrameTime = performance.now();
     updateUI();
   });
-
   document.getElementById('clearBtnC').addEventListener('click', () => {
     if (S.anim) return;
     S.last = null;
     updateUI();
   });
-
   const cInputEl = document.getElementById('cInput');
   cInputEl.addEventListener('input', () => {
     const cleaned = cInputEl.value.replace(/[^0-9]/g, '');
@@ -1121,7 +1118,6 @@
     if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
   });
   cInputEl.addEventListener('change', applyValidation);
-
   function updateUI() {
     const running = !!S.anim;
     document.getElementById('runBtnC').disabled = running || !S.inputValid;
@@ -1136,11 +1132,9 @@
       readoutEl.textContent = 'Ready.';
     }
   }
-
   function updateReadoutRunning(w) {
     readoutEl.innerHTML = 'Running N = ' + w.N + ' \u00B7 step ' + w.stepIdx + ' / ' + w.N;
   }
-
   window.addEventListener('resize', syncCanvas);
   syncCanvas();
   applyValidation();
