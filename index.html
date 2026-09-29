@@ -17,7 +17,6 @@
 
   body { display: flex; flex-direction: column; overflow: hidden; }
 
-  /* ---------- Header + nav ---------- */
   header {
     border-bottom: 1px solid #2a2f3a;
     flex-shrink: 0;
@@ -47,7 +46,6 @@
     color: #cfe3ff;
   }
 
-  /* ---------- Main layout ---------- */
   main {
     display: grid;
     grid-template-columns: 1fr 340px;
@@ -65,7 +63,6 @@
   canvas { display: block; width: 100%; height: 100%; }
   #simCanvasA { cursor: crosshair; }
 
-  /* ---------- Tooltip (Part A) ---------- */
   .tooltip {
     position: absolute;
     pointer-events: none;
@@ -85,7 +82,6 @@
   .tooltip-title { color: #6ea8fe; margin-bottom: 2px; }
   .tooltip .hl { color: #ffd166; }
 
-  /* ---------- Shared panel ---------- */
   .panel {
     padding: 1rem 1.15rem 2rem;
     overflow-y: auto;
@@ -127,7 +123,6 @@
   .readout .hl { color: #ffd166; }
   .readout .err { color: #e88b8b; }
 
-  /* ---------- Part B specific ---------- */
   .dim-row { display: flex; gap: 0.35rem; }
   .dim-btn {
     flex: 1;
@@ -180,9 +175,7 @@
   </nav>
 </header>
 
-<!-- ====================================================
-     PART A
-     ==================================================== -->
+<!-- ============================ PART A ============================ -->
 <main id="viewA">
   <section class="canvas-wrap">
     <canvas id="simCanvasA"></canvas>
@@ -205,9 +198,7 @@
   </aside>
 </main>
 
-<!-- ====================================================
-     PART B
-     ==================================================== -->
+<!-- ============================ PART B ============================ -->
 <main id="viewB" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasB"></canvas>
@@ -233,9 +224,7 @@
   </aside>
 </main>
 
-<!-- ====================================================
-     PART C
-     ==================================================== -->
+<!-- ============================ PART C ============================ -->
 <main id="viewC" hidden>
   <section class="canvas-wrap">
     <canvas id="simCanvasC"></canvas>
@@ -257,7 +246,8 @@
 
 <script>
 /* =====================================================
-   Tab switching
+   Tab switching — defers resize to next frame so the
+   newly-visible canvas has real dimensions.
    ===================================================== */
 (function () {
   const tabs = document.querySelectorAll('.part-tab');
@@ -273,7 +263,9 @@
       tab.classList.add('active');
       const part = tab.dataset.part;
       for (const k in views) views[k].hidden = (k !== part);
-      window.dispatchEvent(new Event('resize'));
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
     });
   });
 })();
@@ -397,6 +389,7 @@
   function render() {
     if (document.getElementById('viewA').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
     drawGrid();
     drawAllRuns();
@@ -745,6 +738,7 @@
   function render() {
     if (document.getElementById('viewB').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
 
     const walk = S.anim || S.last;
@@ -1066,13 +1060,13 @@
 
   const MAX_N = 100000;
   const MAX_DRAWN_POINTS = 5000;
-  const RATE_C = 2;           // completion time ≈ ln(N) / RATE_C seconds
-  const MAX_ATTEMPTS = 20;    // trap-restart attempts
+  const RATE_C = 2;
+  const MAX_ATTEMPTS = 20;
 
   const S = {
     N: 1000,
-    anim: null,       // walk currently being animated
-    last: null,       // most recently completed walk (kept on screen)
+    anim: null,
+    last: null,
     stepAcc: 0,
     inputValid: true,
   };
@@ -1134,7 +1128,6 @@
     const path = [[0, 0]];
 
     for (let i = 0; i < N; i++) {
-      // Collect unvisited neighbors.
       const avail = [];
       const nx1 = x + 1, ny1 = y;
       const nx2 = x - 1, ny2 = y;
@@ -1145,7 +1138,7 @@
       if (!visited.has(nx3 + ',' + ny3)) avail.push([nx3, ny3]);
       if (!visited.has(nx4 + ',' + ny4)) avail.push([nx4, ny4]);
 
-      if (avail.length === 0) return null;   // trapped
+      if (avail.length === 0) return null;
 
       const [nx, ny] = avail[Math.floor(Math.random() * avail.length)];
       x = nx; y = ny;
@@ -1156,26 +1149,21 @@
     return path;
   }
 
-  // Retries on trap. If all attempts fail (essentially impossible in 2D
-  // for N > ~50), returns the last attempt anyway as a truncated walk.
+  // Retries on trap. If all attempts fail, falls back to the longest
+  // partial path we saw (avoids crash; typically unreachable for N > 50).
   function generateSAWSafe(N) {
-    let fallback = null;
+    let best = null;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
       const p = generateSAW(N);
       if (p) return p;
-      fallback = p;
+      if (!best || (p && p.length > best.length)) best = p;
     }
-    return fallback;
+    return best || [[0, 0]];
   }
 
   function createWalk(N) {
     const path = generateSAWSafe(N);
-    return {
-      N,
-      path,
-      stepIdx: 0,         // how many steps have been revealed
-      done: false,
-    };
+    return { N, path, stepIdx: 0, done: false };
   }
 
   function advanceWalk(w) {
@@ -1187,10 +1175,10 @@
     }
   }
 
-  /* ---------- Path drawing with decimation ---------- */
   function traceVisible(walk, toScreen) {
     const path = walk.path;
     const L = Math.min(walk.stepIdx + 1, path.length);
+    if (L < 1) return;
     const stride = Math.max(1, Math.floor(L / MAX_DRAWN_POINTS));
 
     const [x0, y0] = toScreen(path[0]);
@@ -1208,14 +1196,14 @@
     }
   }
 
-  /* ---------- Rendering ---------- */
   function render() {
     if (document.getElementById('viewC').hidden) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
 
     const walk = S.anim || S.last;
-    if (!walk) {
+    if (!walk || !walk.path || walk.path.length === 0) {
       ctx.fillStyle = 'rgba(200,207,218,0.4)';
       ctx.font = '14px system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -1231,8 +1219,6 @@
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const cx = w / 2, cy = h / 2;
 
-    // Fit based on the full path (not just the revealed portion), so the
-    // view doesn't jump around during animation.
     let maxR = 1;
     for (const p of walk.path) {
       const r = Math.hypot(p[0], p[1]);
@@ -1257,20 +1243,17 @@
     }
     ctx.stroke();
 
-    // Path so far
     traceVisible(walk, toScreen);
     ctx.strokeStyle = 'rgba(110,168,254,0.9)';
     ctx.lineWidth = 1.3;
     ctx.lineJoin = 'round';
     ctx.stroke();
 
-    // Origin
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd166';
     ctx.fill();
 
-    // Current position (during animation)
     if (S.anim && !S.anim.done) {
       const cur = walk.path[walk.stepIdx];
       const [px, py] = w2s(cur[0], cur[1]);
@@ -1280,7 +1263,6 @@
       ctx.fill();
     }
 
-    // After completion: mark endpoint and draw faint radius line from origin
     if (walk.done) {
       const end = walk.path[walk.path.length - 1];
       const [ex, ey] = w2s(end[0], end[1]);
@@ -1325,7 +1307,6 @@
     }
   }
 
-  /* ---------- Loop ---------- */
   let lastFrameTime = performance.now();
 
   function loop(now) {
@@ -1356,7 +1337,6 @@
     requestAnimationFrame(loop);
   }
 
-  /* ---------- Panel wiring ---------- */
   document.getElementById('runBtnC').addEventListener('click', () => {
     if (S.anim) return;
     if (!S.inputValid) return;
