@@ -1059,7 +1059,7 @@
 
 <script>
 /* =====================================================
-   PART C · 2D Self-Avoiding Walk  (rewritten)
+   PART C · 2D Self-Avoiding Walk  (openness-biased)
    ===================================================== */
 (function () {
   const canvas    = document.getElementById('simCanvasC');
@@ -1068,7 +1068,7 @@
 
   const MAX_N = 100000;
   const RATE_C = 2;
-  const MAX_ATTEMPTS = 50;
+  const MAX_ATTEMPTS = 20000;
 
   const S = {
     N: 1000,
@@ -1127,55 +1127,98 @@
   function lastRunReadout(w) {
     const end = w.path[w.path.length - 1];
     const R = Math.hypot(end[0], end[1]);
-    return 'N = ' + w.N +
+    let msg = 'N = ' + w.N +
       ' \u00B7 endpoint (' + end[0] + ', ' + end[1] + ')' +
       ' \u00B7 R = <span class="hl">' + R.toFixed(4) + '</span>';
+    if (w.truncated) {
+      msg += '<br><span class="err">Walk trapped at step ' +
+        w.actualN + ' after ' + w.attempts + ' attempts.</span>';
+    } else if (w.attempts > 1) {
+      msg += ' \u00B7 (' + w.attempts + ' attempts)';
+    }
+    return msg;
   }
 
-  /* ---- SAW generator (kinetic growth) ---- */
-  // Returns array of [x, y] of length N+1, or null if trapped.
+  /* ---- SAW generator with openness bias ----
+     At each step, candidates are weighted by how many free neighbors
+     they lead to. This biases the walker away from dead ends and
+     dramatically reduces trapping compared to pure kinetic growth.
+     The bias is a local, short-range perturbation, so the exponent
+     ν is expected to remain in the same universality class.
+  */
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
   function generateSAW(N) {
     const visited = new Set();
-    const path = [[0, 0]];
     visited.add('0,0');
+    const path = [[0, 0]];
     let x = 0, y = 0;
 
-    for (let step = 0; step < N; step++) {
+    for (let i = 0; i < N; i++) {
       const candidates = [];
-      const k1 = (x + 1) + ',' + y;
-      const k2 = (x - 1) + ',' + y;
-      const k3 = x + ',' + (y + 1);
-      const k4 = x + ',' + (y - 1);
-      if (!visited.has(k1)) candidates.push([x + 1, y, k1]);
-      if (!visited.has(k2)) candidates.push([x - 1, y, k2]);
-      if (!visited.has(k3)) candidates.push([x, y + 1, k3]);
-      if (!visited.has(k4)) candidates.push([x, y - 1, k4]);
+      for (const [dx, dy] of DIRS) {
+        const nx = x + dx, ny = y + dy;
+        const key = nx + ',' + ny;
+        if (visited.has(key)) continue;
 
-      if (candidates.length === 0) return null;
+        // Openness of (nx, ny): how many of its 4 neighbors are unvisited.
+        // The current position (x, y) is one of them and is visited,
+        // so it contributes 0. Range: 0 to 3.
+        let open = 0;
+        for (const [dx2, dy2] of DIRS) {
+          if (!visited.has((nx + dx2) + ',' + (ny + dy2))) open++;
+        }
 
-      const c = candidates[Math.floor(Math.random() * candidates.length)];
-      x = c[0]; y = c[1];
-      visited.add(c[2]);
+        candidates.push({ nx, ny, key, weight: open + 1 });
+      }
+
+      if (candidates.length === 0) {
+        return { trapped: true, path };
+      }
+
+      // Weighted pick
+      let total = 0;
+      for (const c of candidates) total += c.weight;
+      let r = Math.random() * total;
+      let pick = candidates[candidates.length - 1];
+      for (const c of candidates) {
+        r -= c.weight;
+        if (r <= 0) { pick = c; break; }
+      }
+
+      x = pick.nx; y = pick.ny;
+      visited.add(pick.key);
       path.push([x, y]);
     }
-    return path;
+
+    return { trapped: false, path };
   }
 
   function generateSAWSafe(N) {
+    let bestPath = null;
     for (let i = 0; i < MAX_ATTEMPTS; i++) {
-      const p = generateSAW(N);
-      if (p) return p;
+      const r = generateSAW(N);
+      if (!r.trapped) {
+        return { path: r.path, truncated: false, attempts: i + 1 };
+      }
+      if (!bestPath || r.path.length > bestPath.length) {
+        bestPath = r.path;
+      }
     }
-    return null;
+    return { path: bestPath, truncated: true, attempts: MAX_ATTEMPTS };
   }
 
   function createWalk(N) {
-    const path = generateSAWSafe(N);
-    if (!path) {
-      // Should never happen in 2D for reasonable N.
-      return { N: N, path: null, stepIdx: 0, done: true, failed: true };
-    }
-    return { N: N, path: path, stepIdx: 0, done: false, failed: false };
+    const r = generateSAWSafe(N);
+    return {
+      N: N,
+      path: r.path,
+      stepIdx: 0,
+      done: false,
+      truncated: r.truncated,
+      attempts: r.attempts,
+      actualN: r.path.length - 1,
+    };
   }
 
   function advanceWalk(w) {
@@ -1202,11 +1245,11 @@
       return;
     }
 
-    if (walk.failed || !walk.path) {
+    if (!walk.path || walk.path.length === 0) {
       ctx.fillStyle = 'rgba(232,139,139,0.7)';
       ctx.font = '14px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Walk generation failed. Try a smaller N.', w / 2, h / 2);
+      ctx.fillText('Walk generation failed.', w / 2, h / 2);
       return;
     }
 
@@ -1218,18 +1261,14 @@
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const cx = w / 2, cy = h / 2;
 
-    // Fit to the full path, with a floor so short walks aren't
-    // over-zoomed.
     let maxR = 1;
     for (const p of walk.path) {
       const r = Math.hypot(p[0], p[1]);
       if (r > maxR) maxR = r;
     }
-    // Floor: N^0.75 is the theoretical RMS end-to-end distance,
-    // so scaling by ~1.5× that keeps the walk nicely framed.
-    const expected = Math.pow(walk.N, 0.75);
-    maxR = Math.max(maxR, expected * 0.5);
-    maxR *= 1.15;
+    // Floor based on theoretical RMS, so short walks aren't over-zoomed.
+    const expected = Math.pow(Math.max(walk.N, 1), 0.75);
+    maxR = Math.max(maxR, expected * 0.5) * 1.15;
 
     const scale = Math.min(w, h) / (2 * maxR);
     const toScreen = (p) => [cx + p[0] * scale, cy - p[1] * scale];
@@ -1265,7 +1304,7 @@
       ctx.stroke();
     }
 
-    // Origin marker
+    // Origin
     ctx.beginPath();
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd166';
@@ -1281,7 +1320,7 @@
       ctx.fill();
     }
 
-    // Endpoint + radius line after completion
+    // Endpoint + dashed radius line after completion
     if (walk.done && walk.path.length > 0) {
       const end = walk.path[walk.path.length - 1];
       const se = toScreen(end);
@@ -1323,6 +1362,11 @@
       ctx.fillText('endpoint: (' + end[0] + ', ' + end[1] + ')', 14, 40);
       ctx.fillStyle = 'rgba(255,209,102,0.95)';
       ctx.fillText('R = ' + R.toFixed(4), 14, 58);
+
+      if (walk.truncated) {
+        ctx.fillStyle = 'rgba(232,139,139,0.95)';
+        ctx.fillText('trapped at step ' + walk.actualN, 14, 76);
+      }
     }
   }
 
