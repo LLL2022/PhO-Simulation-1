@@ -159,6 +159,90 @@
     outline: none;
   }
   .panel input[type="text"]:focus { border-color: #3b6ea5; }
+
+  /* Simple centered card layout (used by 2A) */
+  main.simple-view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0b0d12;
+    padding: 2rem;
+  }
+  .simple-card {
+    width: 100%;
+    max-width: 480px;
+    background: #151922;
+    border: 1px solid #2a2f3a;
+    border-radius: 10px;
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+  .simple-card h2 {
+    margin: 0 0 1.1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #cfe3ff;
+    letter-spacing: 0.01em;
+  }
+  .simple-card label {
+    display: block;
+    font-size: 0.72rem;
+    color: #8b93a1;
+    margin: 0.9rem 0 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .simple-card input[type="text"] {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid #3b4252;
+    background: #0f1117;
+    color: #e8eaf0;
+    font-size: 1rem;
+    font-family: ui-monospace, monospace;
+    outline: none;
+  }
+  .simple-card input[type="text"]:focus { border-color: #3b6ea5; }
+  .simple-card .button-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .simple-card .button-row button {
+    flex: 1;
+    padding: 0.55rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid #3b4252;
+    background: #1f2530;
+    color: #c8cfda;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+  .simple-card .button-row button:hover:not(:disabled) { background: #2a3140; }
+  .simple-card .button-row button.primary {
+    background: #1f3a5f;
+    border-color: #3b6ea5;
+    color: #cfe3ff;
+  }
+  .simple-card .button-row button.primary:hover:not(:disabled) { background: #264a78; }
+  .simple-card .result {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #2a2f3a;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: #9aa4b2;
+    min-height: 3.5em;
+  }
+  .simple-card .result .value {
+    font-size: 1.6rem;
+    color: #ffd166;
+    font-weight: 500;
+  }
+  .simple-card .result .err { color: #e88b8b; }
+
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }
     .canvas-wrap { border-right: none; border-bottom: 1px solid #2a2f3a; }
@@ -175,7 +259,7 @@
     <button class="part-tab" data-part="1C">1C · Self-Avoiding Walk</button>
     <button class="part-tab soon" disabled>1D</button>
     <span class="divider"></span>
-    <button class="part-tab soon" disabled>2A</button>
+    <button class="part-tab" data-part="2A">2A · Shadow</button>
     <button class="part-tab soon" disabled>2B</button>
     <button class="part-tab soon" disabled>2C</button>
   </nav>
@@ -241,6 +325,28 @@
   </aside>
 </main>
 
+<!-- ============================ 2A ============================ -->
+<main id="view2A" hidden class="simple-view">
+  <div class="simple-card">
+    <h2>2A · Length of shadow</h2>
+
+    <label for="hInput2A">Height h (cm), 0 ≤ h ≤ 15</label>
+    <input id="hInput2A" type="text" inputmode="decimal"
+           autocomplete="off" spellcheck="false" value="10">
+
+    <label for="sigmaInput2A">Measurement uncertainty σ_h (cm)</label>
+    <input id="sigmaInput2A" type="text" inputmode="decimal"
+           autocomplete="off" spellcheck="false" value="0.1">
+
+    <div class="button-row">
+      <button id="computeBtn2A" class="primary">Compute L</button>
+      <button id="measureBtn2A">Simulate measurement</button>
+    </div>
+
+    <div class="result" id="readout2A">Enter a height and press Compute.</div>
+  </div>
+</main>
+
 <script>
 /* =====================================================
    Tab switching
@@ -251,6 +357,7 @@
     '1A': document.getElementById('viewA'),
     '1B': document.getElementById('viewB'),
     '1C': document.getElementById('viewC'),
+    '2A': document.getElementById('view2A'),
   };
 
   tabs.forEach(tab => {
@@ -1116,6 +1223,99 @@
   applyValidation();
   updateUI();
   requestAnimationFrame(loop);
+})();
+</script>
+
+<script>
+/* =====================================================
+   2A · Shadow length
+   ===================================================== */
+(function () {
+  const hInput     = document.getElementById('hInput2A');
+  const sigmaInput = document.getElementById('sigmaInput2A');
+  const readout    = document.getElementById('readout2A');
+
+  /* =====================================================
+     >>> FILL THIS IN <<<
+     Given a height h in cm (0 ≤ h ≤ 15), return the shadow
+     length L in cm. Replace the placeholder.
+     ===================================================== */
+  function computeL(h) {
+    // TODO: replace with the real formula from the problem.
+    return h;               // placeholder: shadow = height
+  }
+  /* ===================================================== */
+
+  /* ---------- Gaussian random number ----------
+     Returns a sample from Normal(mean, stddev).
+     Uses the Box–Muller transform. */
+  function gaussian(mean, stddev) {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return mean + stddev * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  /* ---------- Input parsing ---------- */
+  // Accepts digits and at most one decimal point.
+  function parseFloatInRange(raw, min, max) {
+    const s = String(raw).trim();
+    if (!/^\d*\.?\d*$/.test(s) || s === '' || s === '.') return null;
+    const n = parseFloat(s);
+    if (!Number.isFinite(n)) return null;
+    if (n < min || n > max) return null;
+    return n;
+  }
+
+  // Filter the input fields to allow only digits and one dot.
+  function attachFloatFilter(el) {
+    el.addEventListener('input', () => {
+      let s = el.value.replace(/[^0-9.]/g, '');
+      const firstDot = s.indexOf('.');
+      if (firstDot !== -1) {
+        s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
+      }
+      if (s !== el.value) el.value = s;
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.length === 1 && !/[0-9.]/.test(e.key)) e.preventDefault();
+    });
+  }
+  attachFloatFilter(hInput);
+  attachFloatFilter(sigmaInput);
+
+  /* ---------- Handlers ---------- */
+  function showError(msg) {
+    readout.innerHTML = '<span class="err">' + msg + '</span>';
+  }
+
+  document.getElementById('computeBtn2A').addEventListener('click', () => {
+    const h = parseFloatInRange(hInput.value, 0, 15);
+    if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
+
+    const L = computeL(h);
+    readout.innerHTML =
+      'h = ' + h.toFixed(3) + ' cm<br>' +
+      'L = <span class="value">' + L.toFixed(3) + '</span> cm';
+  });
+
+  document.getElementById('measureBtn2A').addEventListener('click', () => {
+    const h = parseFloatInRange(hInput.value, 0, 15);
+    if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
+
+    const sigma = parseFloatInRange(sigmaInput.value, 0, 15);
+    if (sigma === null) { showError('Uncertainty σ must be a non-negative number.'); return; }
+
+    // Simulate a measurement: h_measured = h_true + gaussian noise
+    const hMeasured = h + gaussian(0, sigma);
+    const L = computeL(hMeasured);
+
+    readout.innerHTML =
+      'h (true) = ' + h.toFixed(3) + ' cm<br>' +
+      'h (measured) = ' + hMeasured.toFixed(3) + ' cm<br>' +
+      'L = <span class="value">' + L.toFixed(3) + '</span> cm';
+  });
 })();
 </script>
 
