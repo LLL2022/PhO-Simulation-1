@@ -1223,7 +1223,7 @@
 
 <script>
 /* =====================================================
-   2A · Shadow length
+   2A · Shadow length (with two-stage uncertainty)
    ===================================================== */
 (function () {
   const hInput  = document.getElementById('hInput2A');
@@ -1235,7 +1235,10 @@
   const ARM   = 7.15;   // 'l' in the problem statement
   const R     = 3.20;
 
-  /* Precompute shared quantities and the three h thresholds */
+  /* Inherent measurement uncertainties (cm) */
+  const H_NOISE = 0.05;   // height:  ±0.05 cm
+  const L_NOISE = 0.30;   // shadow:  ±0.30 cm
+
   const SIN_A = Math.sin(ALPHA);
   const COS_A = Math.cos(ALPHA);
   const TAN_A = Math.tan(ALPHA);
@@ -1246,7 +1249,7 @@
   const T2 = ARM + R * (1 - Math.sin(BETA));
   const T3 = ARM + R + R * (COS_A - COS_B) / Math.sin(BETA - ALPHA);
 
-  /* ---------- The physics ---------- */
+  /* ---------- The physics (no uncertainty) ---------- */
   function computeL(h) {
     if (h < T1) {
       return 2 * R / COS_A;
@@ -1259,6 +1262,11 @@
     } else {
       return 2 * R / COS_B;
     }
+  }
+
+  /* ---------- Uniform random in [min, max) ---------- */
+  function uniform(min, max) {
+    return min + Math.random() * (max - min);
   }
 
   /* ---------- Input handling ---------- */
@@ -1293,10 +1301,18 @@
     const h = parseFloatInRange(hInput.value, 0, 15);
     if (h === null) { showError('Height must be a number between 0 and 15 cm.'); return; }
 
-    const L = computeL(h);
+    // Stage 1: the height is measured with error.
+    const hMeasured = h + uniform(-H_NOISE, H_NOISE);
+
+    // Stage 2: the true shadow is computed from the measured height.
+    const LTrue = computeL(hMeasured);
+
+    // Stage 3: the shadow is measured with its own (larger) error.
+    const LMeasured = LTrue + uniform(-L_NOISE, L_NOISE);
+
     readout.innerHTML =
-      'h = ' + h.toFixed(3) + ' cm<br>' +
-      'L = <span class="value">' + L.toFixed(3) + '</span> cm';
+      'h = ' + h.toFixed(2) + ' cm<br>' +
+      'L = <span class="value">' + LMeasured.toFixed(2) + '</span> cm';
   });
 })();
 </script>
